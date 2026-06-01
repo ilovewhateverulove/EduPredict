@@ -34,14 +34,15 @@ except Exception:
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 
-# ── Gemini AI — configure once at startup ────────────────────────────────
+# Gemini AI — configure once at startup 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
 if GEMINI_API_KEY:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         GEMINI_ENABLED = True
-        print(f"  ✓ Gemini AI configured (key: ...{GEMINI_API_KEY[-6:]})")
+        print(f"  ✓ Gemini AI configured (model: {GEMINI_MODEL}, key: ...{GEMINI_API_KEY[-6:]})")
     except Exception as e:
         genai = None
         GEMINI_ENABLED = False
@@ -53,7 +54,7 @@ else:
 
 app = Flask(__name__)
 
-# ── Config ────────────────────────────────────────────────────────────────
+#  Config 
 app.secret_key = os.environ.get("SECRET_KEY", "edupredict-2025-s3cr3t-k3y-do-not-share")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL", "sqlite:///edupredict.db")
@@ -69,20 +70,22 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "edupredict123")
 db.init_app(app)
 bcrypt.init_app(app)
 
-# ── ML models ─────────────────────────────────────────────────────────────
+# ML models 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "sections")
 SECTION_MODEL_DIR = os.path.join(BASE_DIR, "model", "sections")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SECTION_MODEL_DIR, exist_ok=True)
+
 # Full model (all 3 semesters) — used by student dashboard batch predictions
 model        = joblib.load(os.path.join(BASE_DIR, "model", "model.pkl"))
 FEATURES     = joblib.load(os.path.join(BASE_DIR, "model", "features.pkl"))
+
 # Sem3-only model — used by manual prediction form (/predict)
 model_sem3   = joblib.load(os.path.join(BASE_DIR, "model", "model_sem3.pkl"))
 FEATURES_SEM3= joblib.load(os.path.join(BASE_DIR, "model", "features_sem3.pkl"))
 
-# ── Encoding maps ──────────────────────────────────────────────────────────
+# Encoding maps 
 GENDER_MAP    = {"Male": 1, "Female": 0}
 ETHNICITY_MAP = {"Bumiputera Sabah/Sarawak": 0, "Chinese": 1, "Indian": 2, "Malay": 3}
 EDU_MAP = {
@@ -93,7 +96,7 @@ EDU_MAP = {
 METHOD_MAP = {"Group Study": 0, "Mixed": 1, "Notes": 2, "Online Videos": 3, "Textbook": 4}
 YESNO_MAP  = {"No": 0, "Yes": 1}
 
-# ── Grade table (matches train_model.py) ──────────────────────────────────
+# Grade table (matches train_model.py) 
 GRADE_TABLE = [
     (80,100,4.00),(75,79,3.67),(70,74,3.33),(65,69,3.00),(60,64,2.67),
     (55,59,2.33),(50,54,2.00),(45,49,1.67),(40,44,1.33),(35,39,1.00),(0,34,0.00),
@@ -1215,7 +1218,7 @@ YOUR BEHAVIOUR:
             return jsonify({"error": "AI chat is not configured. Add GEMINI_API_KEY to your .env file."}), 503
 
         model_ai = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name=GEMINI_MODEL,
             system_instruction=system_prompt
         )
 
