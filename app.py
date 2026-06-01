@@ -2028,6 +2028,12 @@ def predict():
 # ══════════════════════════════════════════════════════════════════════════
 #  ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════
+if os.environ.get("AUTO_INIT_DB", "true").lower() == "true":
+    try:
+        init_db()
+    except Exception as e:
+        print(f"  Database initialization skipped: {e}")
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=os.environ.get("FLASK_DEBUG", "true").lower() == "true")
