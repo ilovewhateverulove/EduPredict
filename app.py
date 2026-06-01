@@ -283,6 +283,8 @@ def init_db():
             db.session.add(admin)
             print(f"  Admin '{ADMIN_USERNAME}' created.")
         ensure_default_section()
+        db.session.flush()
+        seed_demo_students_from_predictions()
         db.session.commit()
 
 
@@ -411,6 +413,102 @@ def ensure_default_section():
         db.session.flush()
     Student.query.filter(Student.section_id.is_(None)).update(
         {Student.section_id: section.id, Student.registration_status: "preloaded"})
+
+
+def _seed_val(row, col, default=0):
+    if col not in row or pd.isna(row[col]):
+        return default
+    return row[col]
+
+
+def seed_demo_students_from_predictions():
+    if Student.query.count() > 0:
+        return
+    csv_path = os.path.join(BASE_DIR, "outputs", "predictions.csv")
+    if not os.path.isfile(csv_path):
+        print(f"  Demo seed skipped: {csv_path} not found.")
+        return
+
+    default_section = ClassSection.query.filter_by(section_name="Default Section").first()
+    df = pd.read_csv(csv_path)
+    df["StudentID"] = df["StudentID"].astype(str).str.strip()
+    imported = 0
+
+    for _, row in df.iterrows():
+        sid = str(row["StudentID"]).strip()
+        if not sid or sid.lower() == "nan":
+            continue
+
+        student = Student(
+            student_id=sid,
+            section_id=default_section.id if default_section else None,
+            registration_status="preloaded",
+            age=int(_seed_val(row, "Age", 20)),
+            gender=_seed_val(row, "Gender", "Male"),
+            ethnicity=_seed_val(row, "Ethnicity", "Malay"),
+            parental_education=_seed_val(row, "ParentalEducation", "Secondary School (SPM)"),
+            study_hours=float(_seed_val(row, "StudyTimeWeekly", 10)),
+            study_method=_seed_val(row, "StudyMethod", "Mixed"),
+            tutoring=_seed_val(row, "Tutoring", "No"),
+            extracurricular=_seed_val(row, "Extracurricular", "No"),
+            sports=_seed_val(row, "Sports", "No"),
+            music=_seed_val(row, "Music", "No"),
+            volunteering=_seed_val(row, "Volunteering", "No"),
+        )
+        db.session.add(student)
+
+        db.session.add(Prediction(
+            student_id=sid,
+            sem1_cgpa=float(_seed_val(row, "Sem1_CGPA", 0)),
+            sem2_cgpa=float(_seed_val(row, "Sem2_CGPA", 0)),
+            sem3_cgpa=float(_seed_val(row, "Sem3_CGPA", 0)),
+            avg_cgpa=float(_seed_val(row, "AvgCGPA", 0)),
+            sem1_att=float(_seed_val(row, "Sem1_AttendancePct", 0)),
+            sem2_att=float(_seed_val(row, "Sem2_AttendancePct", 0)),
+            sem3_att=float(_seed_val(row, "Sem3_AttendancePct", 0)),
+            overall_att=float(_seed_val(row, "OverallAttendancePct", 0)),
+            att_trend=float(_seed_val(row, "AttendanceTrend", 0)),
+            sem1_barred=int(_seed_val(row, "Sem1_BarredCount", 0)),
+            sem2_barred=int(_seed_val(row, "Sem2_BarredCount", 0)),
+            sem3_barred=int(_seed_val(row, "Sem3_BarredCount", 0)),
+            total_barred=int(_seed_val(row, "TotalBarredCount", 0)),
+            total_failed=int(_seed_val(row, "TotalSubjectsFailed", 0)),
+            risk_probability=float(_seed_val(row, "risk_probability", 0)),
+            prediction_label=_seed_val(row, "prediction_label", "Safe"),
+            risk_level=_seed_val(row, "risk_level", "Low Risk"),
+        ))
+
+        for sem_n, sem_name in ((1, "Sem1"), (2, "Sem2"), (3, "Sem3")):
+            for subj in SUBJECTS:
+                db.session.add(Assessment(
+                    student_id=sid,
+                    semester=sem_n,
+                    subject=subj,
+                    quiz=float(_seed_val(row, f"{sem_name}_{subj}_Quiz", 0)),
+                    assignment=float(_seed_val(row, f"{sem_name}_{subj}_Assignment", 0)),
+                    carry_total=float(_seed_val(row, f"{sem_name}_{subj}_CarryTotal", 0)),
+                    final_exam=float(_seed_val(row, f"{sem_name}_{subj}_FinalExam", 0)),
+                    total=float(_seed_val(row, f"{sem_name}_{subj}_Total", 0)),
+                    grade=_seed_val(row, f"{sem_name}_{subj}_Grade", "-"),
+                    grade_point=float(_seed_val(row, f"{sem_name}_{subj}_GradePoint", 0)),
+                    pass_fail=_seed_val(row, f"{sem_name}_{subj}_PassFail", "-"),
+                ))
+                barred_val = _seed_val(row, f"{sem_name}_{subj}_Barred", "No")
+                db.session.add(AttendanceRecord(
+                    student_id=sid,
+                    semester=sem_n,
+                    subject=subj,
+                    absences=int(_seed_val(row, f"{sem_name}_{subj}_Absences", 0)),
+                    attendance=float(_seed_val(row, f"{sem_name}_{subj}_Attendance", 0)),
+                    barred=(barred_val == "Yes"),
+                ))
+
+        imported += 1
+        if imported % 100 == 0:
+            db.session.commit()
+
+    db.session.commit()
+    print(f"  Demo seed imported {imported} students from outputs/predictions.csv.")
 
 
 def ensure_sqlite_columns():
