@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduPredict — Predict Semester 4 Risk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:wght@600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#FFFFFF;--snow:#F7F8FC;--paper:#EEF0F7;--panel:#F3F4F8;
+  --ink:#111827;--ink2:#374151;--muted:#6B7280;--dim:#9CA3AF;
+  --border:#E5E7EB;--border2:#D1D5DB;
+  --violet:#7C3AED;--blue:#2563EB;--teal:#0D9488;--emerald:#059669;--amber:#D97706;--rose:#E11D48;
+  --accent:#2563EB;--high:#DC2626;--med:#D97706;--low:#059669;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+}
+html,body{min-height:100%;font-family:'Plus Jakarta Sans',sans-serif;
+  background:var(--white);color:var(--ink);font-size:14px}
+.orb{display:none}
+.top-stripe{height:4px;background:linear-gradient(90deg,var(--violet),var(--blue),var(--teal),var(--emerald),var(--amber),var(--rose));position:sticky;top:0;z-index:201}
+.page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+nav{height:56px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);position:sticky;top:4px;z-index:200;box-shadow:var(--shadow-sm);backdrop-filter:blur(12px)}
+.logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;color:var(--ink);
+  display:flex;align-items:center;gap:8px;text-decoration:none}
+.logo-mark{width:24px;height:24px;background:linear-gradient(135deg,var(--violet),var(--blue));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.5);opacity:.6}}
+.nav-link{font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:6px 13px;
+  border:1px solid var(--border);border-radius:7px;transition:all .15s;background:var(--white);display:inline-flex;align-items:center;gap:5px}
+.nav-link:hover{color:var(--ink);border-color:var(--border2);background:var(--snow)}
+
+.content{flex:1;padding:32px;max-width:860px;margin:0 auto;width:100%}
+.page-hd{margin-bottom:24px;animation:fadeUp .4s ease both}
+.page-title{font-family:'Lora',serif;font-size:28px;font-weight:600;margin-bottom:6px;color:var(--ink)}
+.page-sub{font-size:13px;color:var(--muted);line-height:1.7}
+.model-badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:14px;
+  padding:5px 14px;border-radius:999px;font-size:11px;font-weight:500;letter-spacing:1.5px;
+  text-transform:uppercase;background:#EFF6FF;
+  border:1px solid #BFDBFE;color:var(--accent)}
+
+.slabel{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;
+  color:var(--accent);margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.slabel::after{content:'';flex:1;height:1px;background:rgba(37,99,235,0.18)}
+.sub-label{font-size:10px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:6px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:500;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--muted)}
+.field input,.field select{
+  padding:9px 13px;background:var(--white);
+  border:1.5px solid var(--border);border-radius:9px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--ink);
+  outline:none;transition:border-color .2s,background .2s;width:100%}
+.field input::placeholder{color:var(--dim)}
+.field input:focus,.field select:focus{border-color:var(--accent);background:var(--white);box-shadow:0 0 0 4px rgba(37,99,235,0.08)}
+.field select option{background:var(--white);color:var(--ink)}
+.hint{font-size:11px;color:var(--dim)}
+
+.fcard{background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;padding:20px 22px;margin-bottom:18px;animation:fadeUp .4s ease both}
+
+/* Subject block */
+.subj-block{background:var(--white);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.subj-block:last-child{margin-bottom:0}
+.subj-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:800;
+  color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.subj-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.math-dot{background:var(--blue)}
+.sci-dot{background:var(--low)}
+.eng-dot{background:var(--med)}
+.subj-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+.carry-total-preview{padding:9px 13px;background:#EFF6FF;
+  border:1.5px solid #BFDBFE;border-radius:9px;
+  font-size:13px;font-weight:500;color:var(--accent);
+  display:flex;align-items:center;justify-content:space-between}
+.carry-total-preview .ct-label{font-size:10px;color:var(--muted);font-weight:400}
+
+/* Result */
+.result{border-radius:14px;padding:22px 26px;margin-bottom:24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:14px;animation:fadeUp .5s ease both}
+.result.high  {background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.3)}
+.result.medium{background:rgba(255,179,71,0.1);border:1px solid rgba(255,179,71,0.3)}
+.result.low   {background:rgba(0,200,83,0.1);  border:1px solid rgba(0,200,83,0.3)}
+.rlabel{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800}
+.result.high   .rlabel{color:var(--high)}
+.result.medium .rlabel{color:var(--med)}
+.result.low    .rlabel{color:var(--low)}
+.rsub{font-size:13px;color:var(--muted);margin-top:4px}
+.rprob{font-family:'Plus Jakarta Sans',sans-serif;font-size:38px;font-weight:800;text-align:right}
+.result.high   .rprob{color:var(--high)}
+.result.medium .rprob{color:var(--med)}
+.result.low    .rprob{color:var(--low)}
+
+.submit-row{display:flex;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap}
+.btn-submit{padding:13px 30px;background:linear-gradient(135deg,var(--violet),var(--blue));border:none;border-radius:10px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:.5px;
+  color:#fff;cursor:pointer;transition:opacity .2s}
+.btn-submit:hover{opacity:.88}
+.btn-reset{padding:13px 20px;background:var(--white);
+  border:1px solid var(--border);border-radius:10px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s}
+.btn-reset:hover{border-color:var(--border2);color:var(--ink);background:var(--snow)}
+
+.info-strip{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+  background:var(--white);border:1px solid rgba(37,99,235,0.16);
+  border-radius:9px;font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .subj-row{grid-template-columns:1fr 1fr}
+  .content{padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="top-stripe"></div>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+<div class="page">
+
+<nav>
+  <a href="/" class="logo"><span class="logo-mark">&#9670;</span>EduPredict</a>
+  <div style="display:flex;gap:8px">
+    {% if session.get('admin_logged_in') %}
+      <a href="/admin" class="nav-link">&#8592; Admin dashboard</a>
+    {% elif session.get('lecturer_logged_in') %}
+      <a href="/lecturer" class="nav-link">&#8592; Lecturer dashboard</a>
+    {% endif %}
+  </div>
+</nav>
+
+<div class="content">
+
+  <div class="page-hd">
+    <div class="model-badge">&#9670; Semester 3 → Semester 4 Prediction Model &nbsp; | &nbsp; 85.6% accuracy · ROC-AUC 0.93</div>
+    <div class="page-title">Predict Semester 4 Risk</div>
+    <div class="page-sub">
+      Enter a student's <strong>current Semester 3</strong> data.
+      Carry marks are entered <strong>per subject</strong> — Math, Science, and English each have
+      their own Quiz, Assignment, and Final Exam marks.
+      Every submission is logged to the admin Live Feed.
+    </div>
+  </div>
+
+  {% if confidence %}
+  <div class="info-strip" style="margin-top:0;margin-bottom:16px">
+    <span style="font-size:16px">&#9432;</span>
+    <span>
+      Prediction confidence: <strong style="color:var(--ink)">{{ confidence.label }}</strong>
+      ({{ confidence.pct }}%) &bull; Based on {{ confidence.based_on }}.
+      {% if active_section %}Active section: {{ active_section.section_name }}.{% endif %}
+      {% if not xgboost_available %} New section training will use a fallback estimator until <code>xgboost</code> is installed.{% endif %}
+    </span>
+  </div>
+  {% if risk_factors %}
+  <div class="fcard" style="margin-top:-4px;margin-bottom:20px;animation-delay:.02s">
+    <div class="slabel">Risk Factors</div>
+    <div style="display:grid;gap:8px">
+      {% for factor in risk_factors %}
+      <div class="info-strip" style="margin:0">
+        <span style="font-size:13px;font-weight:800;color:{% if factor.level == 'High' %}#DC2626{% elif factor.level == 'Medium' %}#D97706{% else %}#059669{% endif %}">{{ factor.level }}</span>
+        <span>{{ factor.text }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {% if prediction_text %}
+  {% set rc = 'high' if 'High' in risk_level else ('medium' if 'Medium' in risk_level else 'low') %}
+  <div class="result {{ rc }}">
+    <div>
+      <div class="rlabel">
+        {% if 'High' in risk_level %}⚠ {% elif 'Medium' in risk_level %}ℹ {% else %}✓ {% endif %}
+        {{ prediction_text }} — {{ risk_level }}
+      </div>
+      <div class="rsub">Sem 3 CGPA: <strong>{{ avg_cgpa }}</strong> &bull; {{ model_note or 'Based on Semester 3 data entered below' }}</div>
+    </div>
+    <div>
+      <div class="rprob">{{ risk_prob }}</div>
+      <div style="font-size:11px;color:var(--muted);text-align:right">risk probability</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if errors %}
+  <div style="background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.3);
+    border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#FF9090">
+    {{ errors[0] }}
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/predict" id="predictForm">
+
+    <!-- ══ ATTENDANCE & CGPA ══ -->
+    <div class="fcard" style="animation-delay:.04s">
+      <div class="slabel">Semester 3 — Attendance &amp; CGPA</div>
+      <div class="g3">
+        <div class="field">
+          <label>Attendance % <span style="color:var(--dim)">(0–100)</span></label>
+          <input type="number" name="att3" min="0" max="100" step="0.1"
+            placeholder="e.g. 71.4"
+            value="{{ request.form.att3 or '' }}" required>
+          <span class="hint">IIUM barring threshold: 64.3%</span>
+        </div>
+        <div class="field">
+          <label>Total absences <span style="color:var(--dim)">(max 15)</span></label>
+          <input type="number" name="abs3" min="0" max="42" step="1"
+            placeholder="e.g. 9"
+            value="{{ request.form.abs3 or '' }}" required>
+          <span class="hint">3 subjects × max 5 each = 15</span>
+        </div>
+        <div class="field">
+          <label>Sem 3 CGPA <span style="color:var(--dim)">(1.50–4.00)</span></label>
+          <input type="number" name="sem3" min="1.5" max="4.0" step="0.01"
+            placeholder="e.g. 3.20"
+            value="{{ request.form.sem3 or '' }}" required>
+          <span class="hint">Computed from subject grade points</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PER-SUBJECT MARKS ══ -->
+    <div class="fcard" style="animation-delay:.08s">
+      <div class="slabel">Semester 3 — Per-Subject Carry Marks &amp; Final Exam</div>
+
+      <div class="info-strip" style="margin-top:0;margin-bottom:16px">
+        <span style="font-size:16px">&#9432;</span>
+        <span>
+          Each subject has <strong style="color:var(--ink)">its own</strong>
+          Quiz (/20) + Assignment (/40) = Carry Total (/60), plus a Final Exam (/40).
+          Total = Carry + Final (/100).
+          Pass: Carry &ge;24, Final &ge;16, Total &ge;50.
+        </span>
+      </div>
+
+      <!-- Math -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot math-dot"></span> Mathematics
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="math_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 14.0" id="math_quiz"
+              value="{{ request.form.math_quiz or '' }}"
+              oninput="updateCarry('math')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="math_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 28.0" id="math_assn"
+              value="{{ request.form.math_assn or '' }}"
+              oninput="updateCarry('math')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="math_carry_preview">
+              <span id="math_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="math_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 24.0"
+              value="{{ request.form.math_final or '' }}" required>
+            <span class="hint">0 if barred (abs &gt; 5)</span>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>Math absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="math_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 3"
+              value="{{ request.form.math_abs3 or '' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Science -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot sci-dot"></span> Science
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="sci_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 15.0" id="sci_quiz"
+              value="{{ request.form.sci_quiz or '' }}"
+              oninput="updateCarry('sci')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="sci_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 30.0" id="sci_assn"
+              value="{{ request.form.sci_assn or '' }}"
+              oninput="updateCarry('sci')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="sci_carry_preview">
+              <span id="sci_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="sci_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 26.0"
+              value="{{ request.form.sci_final or '' }}" required>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>Science absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="sci_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 3"
+              value="{{ request.form.sci_abs3 or '' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- English -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot eng-dot"></span> English
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="eng_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 13.0" id="eng_quiz"
+              value="{{ request.form.eng_quiz or '' }}"
+              oninput="updateCarry('eng')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="eng_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 26.0" id="eng_assn"
+              value="{{ request.form.eng_assn or '' }}"
+              oninput="updateCarry('eng')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="eng_carry_preview">
+              <span id="eng_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="eng_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 22.0"
+              value="{{ request.form.eng_final or '' }}" required>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>English absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="eng_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 4"
+              value="{{ request.form.eng_abs3 or '' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STUDENT PROFILE ══ -->
+    <div class="fcard" style="animation-delay:.12s">
+      <div class="slabel">Student Profile</div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="field">
+          <label>Gender</label>
+          <select name="gender" required>
+            <option value="" disabled {% if not request.form.gender %}selected{% endif %}>Select</option>
+            {% for g in ['Male','Female'] %}
+            <option value="{{ g }}" {% if request.form.gender==g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Ethnicity</label>
+          <select name="ethnicity" required>
+            <option value="" disabled {% if not request.form.ethnicity %}selected{% endif %}>Select</option>
+            {% for e in ['Malay','Chinese','Indian','Bumiputera Sabah/Sarawak'] %}
+            <option value="{{ e }}" {% if request.form.ethnicity==e %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Parental education</label>
+          <select name="education" required>
+            <option value="" disabled {% if not request.form.education %}selected{% endif %}>Select</option>
+            {% for ed in ["No Formal Education","Primary School (UPSR)","Secondary School (SPM)","Diploma","Bachelor's Degree","Master's Degree","PhD"] %}
+            <option value="{{ ed }}" {% if request.form.education==ed %}selected{% endif %}>{{ ed }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Study hours / week</label>
+          <input type="number" name="study_hours" min="0" max="60" step="0.5"
+            placeholder="e.g. 12.0"
+            value="{{ request.form.study_hours or '' }}" required>
+        </div>
+        <div class="field">
+          <label>Study method</label>
+          <select name="method" required>
+            <option value="" disabled {% if not request.form.method %}selected{% endif %}>Select</option>
+            {% for m in ['Notes','Textbook','Group Study','Online Videos','Mixed'] %}
+            <option value="{{ m }}" {% if request.form.method==m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Tutoring</label>
+          <select name="tutoring" required>
+            <option value="" disabled {% if not request.form.tutoring %}selected{% endif %}>Select</option>
+            <option value="Yes" {% if request.form.tutoring=='Yes' %}selected{% endif %}>Yes</option>
+            <option value="No"  {% if request.form.tutoring=='No'  %}selected{% endif %}>No</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="padding-top:14px;border-top:1px solid var(--border)">
+        <div class="sub-label">Co-curricular activities</div>
+        <div class="g4">
+          {% for label, name in [('Extracurricular','extracurricular'),
+            ('Sports','sports'),('Music','music'),('Volunteering','volunteering')] %}
+          <div class="field">
+            <label>{{ label }}</label>
+            <select name="{{ name }}" required>
+              <option value="" disabled {% if not request.form[name] %}selected{% endif %}>Select</option>
+              <option value="Yes" {% if request.form[name]=='Yes' %}selected{% endif %}>Yes</option>
+              <option value="No"  {% if request.form[name]=='No'  %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-row">
+      <button type="submit" class="btn-submit">&#9670; Predict Semester 4 Risk</button>
+      <button type="button" class="btn-reset"
+        onclick="if(confirm('Clear all fields?')){document.getElementById('predictForm').reset();updateCarry('math');updateCarry('sci');updateCarry('eng');}">
+        Clear form
+      </button>
+      <span style="font-size:12px;color:var(--dim)">
+        Sem 3 model &bull; 85.6% accuracy &bull; Logged to admin live feed
+      </span>
+    </div>
+
+  </form>
+</div>
+
+<footer style="text-align:center;padding:18px 32px;font-size:11px;
+  color:var(--dim);border-top:1px solid var(--border);background:var(--snow)">
+  EduPredict &copy; 2025 &mdash; Sem 3 → Sem 4 Prediction Model
+</footer>
+</div>
+
+<script>
+// Live carry total preview
+function updateCarry(subj) {
+  const quiz = parseFloat(document.getElementById(subj + '_quiz').value) || 0;
+  const assn = parseFloat(document.getElementById(subj + '_assn').value) || 0;
+  const carry = (quiz + assn).toFixed(1);
+  const valEl = document.getElementById(subj + '_carry_val');
+  const box   = document.getElementById(subj + '_carry_preview');
+  valEl.textContent = carry + ' / 60';
+  // Colour code
+  const c = parseFloat(carry);
+  if (c >= 36)      { box.style.borderColor='rgba(0,200,83,0.3)';  valEl.style.color='var(--low)'; }
+  else if (c >= 24) { box.style.borderColor='rgba(255,179,71,0.3)'; valEl.style.color='var(--med)'; }
+  else              { box.style.borderColor='rgba(255,77,109,0.3)'; valEl.style.color='var(--high)'; }
+}
+
+// Init carry previews if form was re-submitted with values
+['math','sci','eng'].forEach(s => updateCarry(s));
+</script>
+</body>
+</html>

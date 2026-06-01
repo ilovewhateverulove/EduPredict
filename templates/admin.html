@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduPredict — Lecturer Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=Lora:ital,wght@0,600;1,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#FFFFFF;--snow:#F7F8FC;--paper:#EEF0F7;
+  --ink:#111827;--ink2:#374151;--muted:#6B7280;--dim:#9CA3AF;
+  --border:#E5E7EB;--border2:#D1D5DB;
+  --violet:#7C3AED;--violet-lt:#EDE9FE;--violet-md:#C4B5FD;
+  --blue:#2563EB;--blue-lt:#DBEAFE;--blue-md:#93C5FD;
+  --teal:#0D9488;--teal-lt:#CCFBF1;
+  --emerald:#059669;--emerald-lt:#D1FAE5;
+  --amber:#D97706;--amber-lt:#FEF3C7;--amber-md:#FDE68A;
+  --rose:#E11D48;--rose-lt:#FFE4E6;
+  --orange:#EA580C;--orange-lt:#FFEDD5;
+  --high:#DC2626;--high-lt:#FEF2F2;--high-border:#FECACA;
+  --med:#D97706;--med-lt:#FFFBEB;--med-border:#FDE68A;
+  --low:#059669;--low-lt:#F0FDF4;--low-border:#BBF7D0;
+  --info:#2563EB;--info-lt:#EFF6FF;--info-border:#BFDBFE;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+  --shadow:0 4px 16px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04);
+}
+
+html{font-family:'Plus Jakarta Sans',sans-serif;background:var(--snow);color:var(--ink);font-size:14px}
+body{min-height:100vh;display:flex;flex-direction:column}
+
+.top-stripe{height:4px;background:linear-gradient(90deg,var(--violet),var(--blue),var(--teal),var(--emerald),var(--amber),var(--rose))}
+
+/* TOPBAR */
+.topbar{height:56px;background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:4px;z-index:200;box-shadow:var(--shadow-sm)}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;color:var(--ink);display:flex;align-items:center;gap:8px;text-decoration:none}
+.logo-mark{width:24px;height:24px;background:linear-gradient(135deg,var(--violet),var(--blue));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+.tb-sep{width:1px;height:18px;background:var(--border)}
+.tb-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+.live-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--low-lt);border:1px solid var(--low-border);border-radius:999px;font-size:11px;font-weight:600;color:var(--emerald)}
+.live-dot{width:5px;height:5px;background:var(--emerald);border-radius:50%;animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.tb-right{display:flex;align-items:center;gap:7px}
+.btn-sm{padding:6px 13px;border-radius:7px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;text-decoration:none;display:flex;align-items:center;gap:5px;transition:all .15s}
+.btn-sm:hover{border-color:var(--border2);color:var(--ink);background:var(--snow)}
+.btn-refresh{background:var(--violet-lt);border-color:rgba(124,58,237,0.2);color:var(--violet)}
+.btn-refresh:hover{background:var(--violet-md);border-color:rgba(124,58,237,0.4);color:var(--violet)}
+.btn-logout{border-color:rgba(220,38,38,0.2);color:var(--high)}
+.btn-logout:hover{background:var(--high-lt);border-color:rgba(220,38,38,0.35)}
+.section-select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-size:12px;font-weight:700;color:var(--ink);font-family:'Plus Jakarta Sans',sans-serif}
+.upload-panel{display:grid;grid-template-columns:1.2fr .7fr .7fr auto;gap:10px;align-items:end;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.upload-panel label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.upload-panel input,.upload-panel select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--snow);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px}
+.section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px}
+.section-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.section-card.active{border-color:rgba(124,58,237,.45);box-shadow:0 0 0 3px rgba(124,58,237,.08)}
+.section-name{font-weight:800;font-size:15px;color:var(--ink);margin-bottom:8px}
+.section-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.section-meta span{padding:4px 7px;border-radius:999px;background:var(--snow);border:1px solid var(--border)}
+.notice-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.notice-row:last-child{border-bottom:none}
+
+/* LAYOUT */
+.layout{display:flex;flex:1}
+
+/* SIDEBAR */
+.sidebar{width:210px;background:var(--white);border-right:1px solid var(--border);padding:16px 10px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto}
+.sb-section{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:0 8px;margin:12px 0 5px}
+.sb-section:first-child{margin-top:2px}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;width:100%;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
+.sb-link:hover{background:var(--snow);color:var(--ink)}
+.sb-link.active{background:var(--violet-lt);color:var(--violet);border:1px solid rgba(124,58,237,0.15)}
+.sb-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:var(--high-lt);color:var(--high);border:1px solid var(--high-border);font-family:'DM Mono',monospace}
+.sb-new{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;color:var(--emerald);text-decoration:none;border:1px solid rgba(5,150,105,0.2);background:var(--emerald-lt);margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s}
+.sb-new:hover{background:#A7F3D0;border-color:rgba(5,150,105,0.4)}
+.sb-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border)}
+.sb-footer-text{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);padding:0 8px;line-height:1.7}
+.sb-footer-text span{color:var(--muted)}
+
+/* MAIN */
+.main{flex:1;padding:20px 22px 48px;overflow-x:hidden}
+
+/* SECTIONS */
+.section{display:none}.section.active{display:block}
+
+/* PAGE HEADER */
+.page-hd{margin-bottom:18px}
+.page-title{font-family:'Lora',serif;font-size:22px;font-weight:600;margin-bottom:3px;color:var(--ink)}
+.page-sub{font-size:12px;color:var(--muted)}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);animation:fadeUp .4s ease both}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+.kv-v::after{background:var(--violet)} .kv-b::after{background:var(--blue)} .kv-t::after{background:var(--teal)}
+.kv-e::after{background:var(--emerald)} .kv-a::after{background:var(--amber)} .kv-r::after{background:var(--rose)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kpi-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.kpi-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.ki-v{background:var(--violet-lt)} .ki-b{background:var(--blue-lt)} .ki-t{background:var(--teal-lt)}
+.ki-e{background:var(--emerald-lt)} .ki-a{background:var(--amber-lt)} .ki-r{background:var(--rose-lt)}
+.kpi-val{font-size:26px;font-weight:800;color:var(--ink)}
+.kpi-val.kd{color:var(--high)} .kpi-val.ke{color:var(--emerald)} .kpi-val.km{color:var(--amber)} .kpi-val.kc{color:var(--blue)}
+.kpi-sub{font-size:10px;color:var(--dim);margin-top:4px}
+
+/* CHART GRIDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+
+/* CHART CARDS */
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:18px 20px;box-shadow:var(--shadow-sm);animation:fadeUp .4s ease .05s both;position:relative;overflow:hidden}
+.chart-card::after{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;border-radius:13px 0 0 13px}
+.cc-v::after{background:linear-gradient(180deg,var(--violet),var(--blue))}
+.cc-t::after{background:linear-gradient(180deg,var(--teal),var(--emerald))}
+.cc-a::after{background:linear-gradient(180deg,var(--amber),var(--orange))}
+.cc-r::after{background:linear-gradient(180deg,var(--rose),var(--high))}
+.cc-b::after{background:linear-gradient(180deg,var(--blue),var(--teal))}
+.card-hd{margin-bottom:14px;padding-left:8px}
+.card-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.card-sub{font-size:11px;color:var(--dim)}
+
+/* STUDENT TABLE */
+.tbl-head-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:260px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--dim);pointer-events:none}
+.search-input{width:100%;padding:8px 12px 8px 32px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--ink);font-family:'Plus Jakarta Sans',sans-serif;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--violet)}
+.search-input::placeholder{color:var(--dim)}
+.flt-btn{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
+.flt-btn:hover{border-color:var(--border2);color:var(--ink)}
+.flt-btn.active{background:var(--violet-lt);border-color:rgba(124,58,237,0.25);color:var(--violet)}
+.flt-btn.fh.active{background:var(--high-lt);border-color:var(--high-border);color:var(--high)}
+.flt-btn.fm.active{background:var(--med-lt);border-color:var(--med-border);color:var(--med)}
+.flt-btn.fl.active{background:var(--low-lt);border-color:var(--low-border);color:var(--low)}
+.count-lbl{margin-left:auto;font-size:11px;color:var(--dim);font-family:'DM Mono',monospace}
+
+.tbl-wrap{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--snow)}
+th{padding:10px 12px;text-align:left;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);color:var(--ink2)}
+tr:last-child td{border:none}
+tr:hover td{background:rgba(124,58,237,0.02)}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid;font-family:'DM Mono',monospace}
+.bh{background:var(--high-lt);color:var(--high);border-color:var(--high-border)}
+.bm{background:var(--med-lt);color:var(--med);border-color:var(--med-border)}
+.bl{background:var(--low-lt);color:var(--low);border-color:var(--low-border)}
+.br{background:var(--high-lt);color:var(--high);border-color:var(--high-border)}
+.bs{background:var(--low-lt);color:var(--low);border-color:var(--low-border)}
+.prob-cell{display:flex;align-items:center;gap:7px}
+.prob-bar{flex:0 0 56px;height:5px;background:var(--paper);border-radius:3px;overflow:hidden}
+.prob-fill{height:100%;border-radius:3px}
+.prob-txt{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.id-link{font-family:'DM Mono',monospace;font-weight:500;font-size:12px;color:var(--violet);text-decoration:none;padding:2px 8px;background:var(--violet-lt);border:1px solid rgba(124,58,237,0.2);border-radius:5px;transition:all .12s}
+.id-link:hover{background:var(--violet-md)}
+.tbl-empty{text-align:center;padding:32px;font-size:13px;color:var(--dim)}
+.pagination{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:1px solid var(--border);justify-content:flex-end;background:var(--snow)}
+.pg-btn{padding:5px 12px;border-radius:6px;font-size:12px;border:1px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:500;transition:all .12s}
+.pg-btn:hover:not(:disabled){border-color:var(--border2);color:var(--ink)}
+.pg-btn:disabled{opacity:.35;cursor:default}
+.pg-info{font-size:11px;color:var(--dim);font-family:'DM Mono',monospace}
+
+/* ACTION BUTTONS */
+.act-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn-action{padding:7px 15px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;gap:6px;transition:all .15s}
+.btn-prim{background:var(--violet);border-color:var(--violet);color:#fff;box-shadow:0 3px 10px rgba(124,58,237,0.2)}
+.btn-prim:hover{background:#6D28D9;box-shadow:0 5px 16px rgba(124,58,237,0.32)}
+.btn-ghost{background:var(--white);border-color:var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--ink)}
+
+/* LIVE FEED */
+.live-list{display:flex;flex-direction:column}
+.live-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.live-row:last-child{border:none}
+.live-pred{font-size:13px;font-weight:600;color:var(--ink)}
+.live-time{font-size:11px;color:var(--dim);font-family:'DM Mono',monospace}
+.live-cgpa{font-size:12px;color:var(--muted)}
+.live-prob{font-family:'DM Mono',monospace;font-size:15px;font-weight:700}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin .7s linear infinite;display:inline-block}
+
+@media(max-width:900px){
+  .sidebar{display:none}
+  .grid-2{grid-template-columns:1fr}
+  .main{padding:14px}
+}
+
+/* MODALS*/
+.modal-backdrop{display:none;position:fixed;inset:0;z-index:1000;background:rgba(17,24,39,0.45);backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal-box{background:var(--white);border:1px solid var(--border);border-radius:18px;width:100%;max-width:1000px;margin:20px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.18);position:relative}
+.modal-stripe{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--violet),var(--blue),var(--teal));border-radius:18px 18px 0 0}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding-top:22px}
+.modal-title{font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--ink)}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.modal-close{background:none;border:none;font-size:20px;color:var(--dim);cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .15s;line-height:1}
+.modal-close:hover{background:var(--snow);color:var(--ink)}
+.modal-body{padding:20px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--snow);border-radius:0 0 18px 18px}
+
+.m-sect{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--violet);margin:18px 0 10px;display:flex;align-items:center;gap:10px;font-weight:500}
+.m-sect:first-child{margin-top:4px}
+.m-sect::after{content:'';flex:1;height:1px;background:rgba(124,58,237,0.12)}
+
+.m-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.m-field label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:5px}
+.m-field input,.m-field select{width:100%;padding:8px 10px;background:var(--snow);border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--ink);outline:none;font-family:'Plus Jakarta Sans',sans-serif;transition:border-color .15s;font-weight:500}
+.m-field input:focus,.m-field select:focus{border-color:var(--violet);box-shadow:0 0 0 2px rgba(124,58,237,0.08)}
+.m-subj-block{border:1px solid var(--border);border-radius:9px;padding:12px 14px;background:var(--snow)}
+.m-subj-head{font-size:12px;font-weight:700;color:var(--violet);margin-bottom:8px;font-family:'DM Mono',monospace}
+.m-subj-grid{display:grid;grid-template-columns:1fr repeat(4,minmax(68px,1fr));gap:8px;align-items:end}
+.m-col-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.m-row-lbl{font-size:12px;font-weight:600;color:var(--ink2)}
+.m-input-sm{width:100%;padding:7px 9px;background:var(--white);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--ink);outline:none;font-family:'Plus Jakarta Sans',sans-serif;transition:border-color .15s}
+.m-input-sm:focus{border-color:var(--violet)}
+
+.m-feedback{display:none;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:500}
+.m-err{background:var(--high-lt);border:1px solid var(--high-border);color:var(--high)}
+.m-ok{background:var(--low-lt);border:1px solid var(--low-border);color:var(--low)}
+.btn-modal-cancel{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s}
+.btn-modal-cancel:hover{border-color:var(--border2);color:var(--ink)}
+.btn-modal-submit{padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--violet),var(--blue));border:none;color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s;box-shadow:0 4px 12px rgba(124,58,237,0.25)}
+.btn-modal-submit:hover{box-shadow:0 6px 18px rgba(124,58,237,0.38);transform:translateY(-1px)}
+.btn-modal-danger{padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;background:var(--high);border:none;color:#fff;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 4px 12px rgba(220,38,38,0.25);transition:all .15s}
+.btn-modal-danger:hover{opacity:.9}
+.tbl-edit-btn{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid rgba(124,58,237,0.2);background:var(--violet-lt);color:var(--violet);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s;margin-right:5px}
+.tbl-edit-btn:hover{background:var(--violet-md)}
+.tbl-del-btn{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--high-border);background:var(--high-lt);color:var(--high);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
+.tbl-del-btn:hover{background:#FECACA}
+</style>
+</head>
+<body>
+<div class="top-stripe"></div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="tb-brand">
+    <a href="/" class="logo"><div class="logo-mark">◆</div>EduPredict</a>
+    <div class="tb-sep"></div>
+    <span class="tb-tag">{{ dashboard_title or 'Admin Dashboard' }}</span>
+  </div>
+  <div class="live-pill"><span class="live-dot"></span>Live</div>
+  <div class="tb-right">
+    {% if is_lecturer and sections %}
+    <select class="section-select" onchange="location.href='/lecturer/switch-section/'+this.value">
+      {% for section in sections %}
+      <option value="{{ section.id }}" {% if active_section and section.id == active_section.id %}selected{% endif %}>{{ section.section_name }} - Sem {{ section.current_semester }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <a href="/" class="btn-sm">← Student portal</a>
+    <button class="btn-sm btn-refresh" onclick="refreshSection(this)"><span id="refresh-icon">↻</span> Refresh</button>
+    <a href="{{ logout_url or '/admin/logout' }}" class="btn-sm btn-logout">→ Logout</a>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-section">Analytics</div>
+    <button class="sb-link active" onclick="showSection('overview',this)"><span class="sb-icon">◆</span>Overview</button>
+    <button class="sb-link" onclick="showSection('academic',this)"><span class="sb-icon">▲</span>Academic trends</button>
+    <button class="sb-link" onclick="showSection('demographics',this)"><span class="sb-icon">○</span>Demographics</button>
+    <div class="sb-section">Data</div>
+    {% if is_lecturer %}
+    <button class="sb-link" onclick="showSection('classes',this)"><span class="sb-icon">▦</span>My classes</button>
+    {% endif %}
+    {% if not is_lecturer %}
+    <button class="sb-link" id="sb-students" onclick="showSection('students',this)">
+      <span class="sb-icon">≡</span>All students
+      <span class="sb-badge" id="high-risk-badge">…</span>
+    </button>
+    {% endif %}
+    <button class="sb-link" onclick="showSection('live',this)"><span class="sb-icon">●</span>Live predictions</button>
+    <a href="/predict" class="sb-new"><span>◇</span>New prediction</a>
+    <div class="sb-footer">
+      <div class="sb-footer-text">Dataset:<br><span>outputs/predictions.csv</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ═══ OVERVIEW ═══ -->
+    <div id="sec-overview" class="section active">
+      <div class="page-hd">
+        <div class="page-title">Overview</div>
+        <div class="page-sub">Summary of all {{ stats.total }} students in the dataset</div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi kv-v" style="animation-delay:.00s">
+          <div class="kpi-top"><div class="kpi-label">Total students</div><div class="kpi-icon ki-v">👤</div></div>
+          <div class="kpi-val kc">{{ stats.total }}</div><div class="kpi-sub">In dataset</div>
+        </div>
+        <div class="kpi kv-r" style="animation-delay:.04s">
+          <div class="kpi-top"><div class="kpi-label">At-risk</div><div class="kpi-icon ki-r">⚠</div></div>
+          <div class="kpi-val kd">{{ stats.at_risk }}</div><div class="kpi-sub">{{ stats.at_risk_pct }}% of students</div>
+        </div>
+        <div class="kpi kv-e" style="animation-delay:.08s">
+          <div class="kpi-top"><div class="kpi-label">Safe</div><div class="kpi-icon ki-e">✓</div></div>
+          <div class="kpi-val ke">{{ stats.safe }}</div><div class="kpi-sub">{{ stats.safe_pct }}% of students</div>
+        </div>
+        <div class="kpi kv-r" style="animation-delay:.12s">
+          <div class="kpi-top"><div class="kpi-label">High risk</div><div class="kpi-icon ki-r">🔴</div></div>
+          <div class="kpi-val kd">{{ stats.high_risk }}</div><div class="kpi-sub">Needs attention</div>
+        </div>
+        <div class="kpi kv-b" style="animation-delay:.16s">
+          <div class="kpi-top"><div class="kpi-label">Avg CGPA</div><div class="kpi-icon ki-b">🎓</div></div>
+          <div class="kpi-val kc">{{ stats.avg_cgpa }}</div><div class="kpi-sub">Cohort average</div>
+        </div>
+        <div class="kpi kv-t" style="animation-delay:.20s">
+          <div class="kpi-top"><div class="kpi-label">Avg attendance</div><div class="kpi-icon ki-t">📅</div></div>
+          <div class="kpi-val kc">{{ stats.avg_attendance }}%</div><div class="kpi-sub">{% if is_lecturer %}Your sections{% else %}All students{% endif %}</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card cc-v">
+          <div class="card-hd"><div class="card-title">Safe vs At-Risk</div><div class="card-sub">Overall prediction split</div></div>
+          <canvas id="donutChart" height="210"></canvas>
+        </div>
+        <div class="chart-card cc-r">
+          <div class="card-hd"><div class="card-title">Risk tier breakdown</div><div class="card-sub">High, Medium, Low risk counts</div></div>
+          <canvas id="riskTierChart" height="210"></canvas>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card cc-t">
+          <div class="card-hd"><div class="card-title">At-risk rate by ethnicity</div><div class="card-sub">% flagged per group</div></div>
+          <canvas id="ethnicChart" height="200"></canvas>
+        </div>
+        <div class="chart-card cc-b">
+          <div class="card-hd"><div class="card-title">At-risk rate by gender</div><div class="card-sub">% flagged per gender</div></div>
+          <canvas id="genderChart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ACADEMIC TRENDS ═══ -->
+    <div id="sec-academic" class="section">
+      <div class="page-hd"><div class="page-title">Academic Trends</div><div class="page-sub">CGPA progression, attendance impact, and study behaviour</div></div>
+      <div class="grid-2">
+        <div class="chart-card cc-v"><div class="card-hd"><div class="card-title">Average CGPA by semester</div><div class="card-sub">Cohort trend across 3 semesters</div></div><canvas id="cgpaTrendChart" height="220"></canvas></div>
+        <div class="chart-card cc-r"><div class="card-hd"><div class="card-title">At-risk rate by attendance range</div><div class="card-sub">Lower attendance = higher risk</div></div><canvas id="attRiskChart" height="220"></canvas></div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card cc-t"><div class="card-hd"><div class="card-title">Avg CGPA by study method</div><div class="card-sub">Which methods correlate with performance</div></div><canvas id="studyMethodChart" height="200"></canvas></div>
+        <div class="chart-card cc-a"><div class="card-hd"><div class="card-title">Avg CGPA by parental education</div><div class="card-sub">Socioeconomic context</div></div><canvas id="parentalEduChart" height="200"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ═══ DEMOGRAPHICS ═══ -->
+    <div id="sec-demographics" class="section">
+      <div class="page-hd"><div class="page-title">Demographics</div><div class="page-sub">Breakdown of student population by background</div></div>
+      <div class="grid-2">
+        <div class="chart-card cc-v"><div class="card-hd"><div class="card-title">Ethnicity distribution</div><div class="card-sub">Students per ethnicity</div></div><canvas id="ethnicDistChart" height="220"></canvas></div>
+        <div class="chart-card cc-b"><div class="card-hd"><div class="card-title">Gender distribution</div><div class="card-sub">Male vs Female</div></div><canvas id="genderDistChart" height="220"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ═══ STUDENTS TABLE ═══ -->
+    {% if is_lecturer %}
+    <div id="sec-classes" class="section">
+      <div class="page-hd">
+        <div class="page-title">My Classes</div>
+        <div class="page-sub">Upload a CSV per class section, train a section-scoped model, and switch dashboard context.</div>
+      </div>
+      <form class="upload-panel" id="sectionUploadForm" enctype="multipart/form-data">
+        <div><label>Section name</label><input name="section_name" placeholder="CS101-A" required></div>
+        <div><label>Current semester</label><select name="current_semester"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+        <div><label>CSV file</label><input name="csv_file" type="file" accept=".csv" required></div>
+        <button class="btn-action btn-prim" type="submit">Upload & Train</button>
+      </form>
+      <div id="sectionUploadMsg" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+      <div class="act-btns" style="margin-bottom:14px">
+        <button class="btn-action btn-prim" onclick="openAddModal()">+ Add Student to Active Section</button>
+        <a class="btn-action btn-ghost" href="/api/sections/template?semester=1">Download Sem 1 Template</a>
+        <a class="btn-action btn-ghost" href="/api/sections/template?semester=2">Download Sem 2 Template</a>
+        <a class="btn-action btn-ghost" href="/api/sections/template?semester=3">Download Sem 3 Template</a>
+      </div>
+      <div class="section-grid" id="sectionCards"></div>
+      <div class="chart-card cc-r">
+        <div class="card-hd"><div class="card-title">Early warning notifications</div><div class="card-sub">Risk-level increases queued for student email/push follow-up</div></div>
+        <div id="notificationList"><div class="tbl-empty">No notifications yet.</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not is_lecturer %}
+    <div id="sec-students" class="section">
+      <div class="tbl-head-row">
+        <div><div class="page-title">All Students</div><div class="page-sub">Sorted by highest risk probability. Click ID to view dashboard.</div></div>
+        <div class="act-btns">
+          <button onclick="openAddModal()" class="btn-action btn-prim">+ Add student</button>
+          <input id="batchFile" type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="uploadBatchFile()">
+          <button onclick="document.getElementById('batchFile').click()" class="btn-action btn-ghost">⬆ Upload CSV</button>
+        </div>
+      </div>
+      <div id="batchImportMsg" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="studentSearch" type="text" placeholder="Search ID, gender, ethnicity…" oninput="debounceSearch()">
+        </div>
+        <button class="flt-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="flt-btn fh" onclick="setFilter('High Risk',this)">High risk</button>
+        <button class="flt-btn fm" onclick="setFilter('Medium Risk',this)">Medium</button>
+        <button class="flt-btn fl" onclick="setFilter('Low Risk',this)">Low risk</button>
+        <span class="count-lbl" id="tbl-count"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Student ID</th><th>Gender</th><th>Ethnicity</th><th>Attendance</th><th>Avg CGPA</th><th>Prediction</th><th>Risk level</th><th>Risk probability</th><th>Actions</th></tr></thead>
+          <tbody id="studentTbody"><tr><td colspan="9" class="tbl-empty">Loading…</td></tr></tbody>
+        </table>
+        <div class="pagination">
+          <span class="pg-info" id="pg-info"></span>
+          <button class="pg-btn" id="pg-prev" onclick="changePage(-1)">← Prev</button>
+          <button class="pg-btn" id="pg-next" onclick="changePage(1)">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    {% endif %}
+
+    <!-- ═══ LIVE FEED ═══ -->
+    <div id="sec-live" class="section">
+      <div class="page-hd"><div class="page-title">Live Predictions</div><div class="page-sub">Real-time log of predictions submitted through the student portal. Auto-refreshes every 30 seconds.</div></div>
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+        <div class="kpi kv-b"><div class="kpi-top"><div class="kpi-label">Total submissions</div><div class="kpi-icon ki-b">📋</div></div><div class="kpi-val kc" id="lv-total">—</div></div>
+        <div class="kpi kv-r"><div class="kpi-top"><div class="kpi-label">At-risk submitted</div><div class="kpi-icon ki-r">⚠</div></div><div class="kpi-val kd" id="lv-atrisk">—</div></div>
+        <div class="kpi kv-e"><div class="kpi-top"><div class="kpi-label">Safe submitted</div><div class="kpi-icon ki-e">✓</div></div><div class="kpi-val ke" id="lv-safe">—</div></div>
+        <div class="kpi kv-a"><div class="kpi-top"><div class="kpi-label">Avg risk prob</div><div class="kpi-icon ki-a">📈</div></div><div class="kpi-val km" id="lv-prob">—</div></div>
+      </div>
+      <div class="chart-card cc-v">
+        <div class="card-hd"><div class="card-title">Recent submissions</div><div class="card-sub" id="live-sub-count"></div></div>
+        <div id="live-list-body"><div class="tbl-empty">No submissions yet. Students submit via the web portal.</div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div id="addModal" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-stripe"></div>
+    <div class="modal-head">
+      <div><div class="modal-title" id="studentModalTitle">Add new student</div><div class="modal-sub" id="studentModalSub">Enter profile, academic summary, subject marks, and attendance details.</div></div>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="addModalError" class="m-feedback m-err"></div>
+      <div id="addModalSuccess" class="m-feedback m-ok"></div>
+      <input id="studentFormMode" type="hidden" value="add">
+      <input id="editOriginalId" type="hidden" value="">
+      <div class="m-sect">Student Profile</div>
+      <div class="m-grid4">
+        <div class="m-field" style="grid-column:1/-1">
+          <label>Student ID <span style="color:var(--high)">*</span> <span style="text-transform:none;letter-spacing:0;color:var(--dim);font-weight:400;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px">(existing range: 1001 to {{ stats.current_student_id }})</span></label>
+          <input id="add_id" type="text" placeholder="e.g. 2001">
+        </div>
+        {% for label, fid, placeholder, opts in [
+          ('Gender','add_gender','Select',['Male','Female']),('Ethnicity','add_ethnicity','Select',['Malay','Chinese','Indian','Bumiputera Sabah/Sarawak']),
+          ('Age','add_age','e.g. 20',[]),('Parental Education','add_edu','Select',["No Formal Education","Primary School (UPSR)","Secondary School (SPM)","Diploma","Bachelor's Degree","Master's Degree","PhD"]),
+          ('Weekly Study Hours','add_study_hours','e.g. 10',[]),('Study Method','add_method','Select',['Notes','Textbook','Group Study','Online Videos','Mixed']),
+          ('Tutoring','add_tutoring','Select',['Yes','No']),('Extracurricular','add_extracurricular','Select',['Yes','No']),
+          ('Sports','add_sports','Select',['Yes','No']),('Music','add_music','Select',['Yes','No']),('Volunteering','add_volunteering','Select',['Yes','No']),
+        ] %}
+        <div class="m-field"><label>{{ label }}</label>
+          {% if opts %}<select id="{{ fid }}"><option value="">— Select —</option>{% for o in opts %}<option value="{{ o }}">{{ o }}</option>{% endfor %}</select>
+          {% else %}<input id="{{ fid }}" type="number" placeholder="{{ placeholder }}">{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="m-sect">Academic Summary</div>
+      <div class="m-grid4">
+        {% for label, fid, placeholder, opts in [
+          ('Sem 1 CGPA','add_sem1_cgpa','0.00',[]),('Sem 2 CGPA','add_sem2_cgpa','0.00',[]),('Sem 3 CGPA','add_sem3_cgpa','0.00',[]),('Average CGPA','add_avg_cgpa','0.00',[]),
+          ('Sem 1 Attendance %','add_sem1_att','0',[]),('Sem 2 Attendance %','add_sem2_att','0',[]),('Sem 3 Attendance %','add_sem3_att','0',[]),('Overall Attendance %','add_overall_att','0',[]),
+          ('Attendance Trend','add_att_trend','0',[]),('Sem 1 Barred','add_sem1_barred','0',[]),('Sem 2 Barred','add_sem2_barred','0',[]),('Sem 3 Barred','add_sem3_barred','0',[]),
+          ('Total Barred','add_total_barred','0',[]),('Total Failed','add_total_failed','0',[]),('Risk Probability %','add_risk_probability','0',[]),
+          ('Prediction','add_prediction_label','Select',['Safe','At-Risk']),('Risk Level','add_risk_level','Select',['Low Risk','Medium Risk','High Risk']),
+        ] %}
+        <div class="m-field"><label>{{ label }}</label>
+          {% if opts %}<select id="{{ fid }}"><option value="">— {{ placeholder }} —</option>{% for o in opts %}<option value="{{ o }}">{{ o }}</option>{% endfor %}</select>
+          {% else %}<input id="{{ fid }}" type="number" step="0.01" min="0" placeholder="{{ placeholder }}">{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="m-sect">Subject Marks &amp; Attendance</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% for sem in [1,2,3] %}
+        <div class="m-subj-block">
+          <div class="m-subj-head">Semester {{ sem }}</div>
+          <div style="display:grid;gap:7px">
+            <div class="m-subj-grid"><div></div><div class="m-col-lbl">Quiz /20</div><div class="m-col-lbl">Assignment /40</div><div class="m-col-lbl">Final /40</div><div class="m-col-lbl">Absences</div></div>
+            {% for subject in ['Math','Science','English'] %}
+            <div class="m-subj-grid">
+              <div class="m-row-lbl">{{ subject }}</div>
+              <input id="add_sem{{ sem }}_{{ subject|lower }}_quiz" type="number" step="0.01" min="0" class="m-input-sm">
+              <input id="add_sem{{ sem }}_{{ subject|lower }}_assignment" type="number" step="0.01" min="0" class="m-input-sm">
+              <input id="add_sem{{ sem }}_{{ subject|lower }}_final" type="number" step="0.01" min="0" class="m-input-sm">
+              <input id="add_sem{{ sem }}_{{ subject|lower }}_absences" type="number" min="0" max="14" class="m-input-sm">
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-modal-submit" onclick="submitAddStudent()" id="addSubmitBtn">Add student</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div id="deleteModal" class="modal-backdrop">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-stripe" style="background:linear-gradient(90deg,var(--high),var(--rose))"></div>
+    <div class="modal-head">
+      <div><div class="modal-title" style="color:var(--high)">⚠ Delete student</div><div class="modal-sub">This action cannot be undone.</div></div>
+      <button class="modal-close" onclick="closeDeleteModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted)">Are you sure you want to delete student <strong id="deleteStudentId" style="color:var(--ink)"></strong>? All their data will be permanently removed.</p>
+      <div id="deleteModalError" class="m-feedback m-err" style="margin-top:14px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn-modal-danger" onclick="confirmDelete()" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+Chart.defaults.color='#6B7280';Chart.defaults.font.family='Plus Jakarta Sans';
+const GRID='rgba(0,0,0,0.05)';const TICK='#6B7280';
+const LEGEND={labels:{color:TICK,font:{size:12},boxWidth:12,padding:12}};
+const TOOLTIP={backgroundColor:'#fff',borderColor:'#E5E7EB',borderWidth:1,titleColor:'#111827',bodyColor:'#6B7280',padding:10,cornerRadius:8};
+let charts={};
+const PAL={violet:'rgba(124,58,237,0.75)',blue:'rgba(37,99,235,0.7)',teal:'rgba(13,148,136,0.7)',emerald:'rgba(5,150,105,0.7)',amber:'rgba(217,119,6,0.7)',rose:'rgba(225,29,72,0.7)',high:'rgba(220,38,38,0.7)'};
+
+function mkDonut(id,labels,data,colors){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+    options:{responsive:true,cutout:'65%',plugins:{legend:{...LEGEND,position:'right'},tooltip:{...TOOLTIP}}}});}
+
+function mkHBar(id,labels,data,colors){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false},tooltip:{...TOOLTIP}},
+      scales:{x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID},border:{display:false}},
+              y:{ticks:{color:TICK,font:{size:11}},grid:{display:false},border:{display:false}}}}});}
+
+function mkBar(id,labels,data,colors){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{...TOOLTIP}},
+      scales:{x:{ticks:{color:TICK,font:{size:10}},grid:{display:false},border:{display:false}},
+              y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID},border:{display:false}}}}});}
+
+function mkLine(id,labels,data,color){const ctx=document.getElementById(id);if(!ctx)return;if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:color,backgroundColor:color.replace('0.7)','0.1)'),
+    borderWidth:2.5,pointBackgroundColor:color,pointRadius:5,tension:0.4,fill:true}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{...TOOLTIP}},
+      scales:{y:{min:2.0,max:4.0,ticks:{color:TICK,font:{size:10},callback:v=>v.toFixed(2)},grid:{color:GRID},border:{display:false}},
+              x:{ticks:{color:TICK,font:{size:12,weight:'600'}},grid:{display:false},border:{display:false}}}}});}
+
+async function loadOverview(){
+  const [split,levels,ethnic,gender]=await Promise.all([
+    fetch('/api/risk-split').then(r=>r.json()),fetch('/api/risk-levels').then(r=>r.json()),
+    fetch('/api/ethnicity-risk').then(r=>r.json()),fetch('/api/gender-risk').then(r=>r.json()),
+  ]);
+  mkDonut('donutChart',['Safe','At-Risk'],[split.Safe,split['At-Risk']],[PAL.emerald,PAL.rose]);
+  mkBar('riskTierChart',['High Risk','Medium Risk','Low Risk'],[levels['High Risk'],levels['Medium Risk'],levels['Low Risk']],[PAL.rose,PAL.amber,PAL.emerald]);
+  mkHBar('ethnicChart',ethnic.map(d=>d.ethnicity),ethnic.map(d=>d.at_risk_pct),ethnic.map(d=>d.at_risk_pct>70?PAL.rose:d.at_risk_pct>50?PAL.amber:PAL.teal));
+  mkHBar('genderChart',gender.map(d=>d.gender),gender.map(d=>d.at_risk_pct),[PAL.violet,PAL.blue]);
+  const highRiskBadge=document.getElementById('high-risk-badge');
+  if(highRiskBadge)highRiskBadge.textContent=levels['High Risk'];
+}
+
+async function loadAcademic(){
+  const [trend,attRisk,method,parentEdu]=await Promise.all([
+    fetch('/api/cgpa-trend').then(r=>r.json()),fetch('/api/attendance-risk').then(r=>r.json()),
+    fetch('/api/study-method').then(r=>r.json()),fetch('/api/parental-education').then(r=>r.json()),
+  ]);
+  mkLine('cgpaTrendChart',['Sem 1','Sem 2','Sem 3'],[trend['Sem 1'],trend['Sem 2'],trend['Sem 3']],'rgba(124,58,237,0.9)');
+  mkBar('attRiskChart',attRisk.map(d=>d.range),attRisk.map(d=>d.at_risk_pct),attRisk.map(d=>d.at_risk_pct>70?PAL.rose:d.at_risk_pct>50?PAL.amber:PAL.emerald));
+  mkHBar('studyMethodChart',method.map(d=>d.method),method.map(d=>d.avg_cgpa),method.map(()=>PAL.teal));
+  mkHBar('parentalEduChart',parentEdu.map(d=>d.education),parentEdu.map(d=>d.avg_cgpa),parentEdu.map(()=>PAL.blue));
+}
+
+async function loadDemographics(){
+  const [ethnic,gender]=await Promise.all([fetch('/api/ethnicity-risk').then(r=>r.json()),fetch('/api/gender-risk').then(r=>r.json())]);
+  mkDonut('ethnicDistChart',ethnic.map(d=>d.ethnicity),ethnic.map(d=>d.at_risk_pct),[PAL.violet,PAL.teal,PAL.emerald,PAL.blue]);
+  mkDonut('genderDistChart',gender.map(d=>d.gender),gender.map(d=>d.at_risk_pct),[PAL.violet,PAL.blue]);
+}
+
+let curPage=1,curRisk='all',srchTimer;
+function debounceSearch(){clearTimeout(srchTimer);srchTimer=setTimeout(()=>{curPage=1;loadStudents();},320);}
+function setFilter(risk,btn){curRisk=risk;curPage=1;document.querySelectorAll('.flt-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadStudents();}
+function changePage(dir){curPage+=dir;loadStudents();}
+function rBadge(l){if(l==='High Risk')return`<span class="badge bh">High</span>`;if(l==='Medium Risk')return`<span class="badge bm">Medium</span>`;return`<span class="badge bl">Low</span>`;}
+function pBadge(p){return p==='At-Risk'?`<span class="badge br">At-Risk</span>`:`<span class="badge bs">Safe</span>`;}
+function probCell(prob){const c=prob>=70?'#DC2626':prob>=40?'#D97706':'#059669';return`<div class="prob-cell"><div class="prob-bar"><div class="prob-fill" style="width:${prob}%;background:${c}"></div></div><span class="prob-txt">${prob}%</span></div>`;}
+
+async function loadStudents(){
+  const search=document.getElementById('studentSearch').value.trim();
+  const params=new URLSearchParams({search,risk:curRisk,page:curPage});
+  const data=await fetch('/api/students?'+params).then(r=>r.json());
+  const total=Math.ceil(data.total/data.per_page);
+  document.getElementById('tbl-count').textContent=`${data.total} student${data.total!==1?'s':''}`;
+  document.getElementById('pg-info').textContent=`Page ${data.page} of ${total||1}`;
+  document.getElementById('pg-prev').disabled=data.page<=1;
+  document.getElementById('pg-next').disabled=data.page>=total;
+  const tbody=document.getElementById('studentTbody');
+  if(!data.students.length){tbody.innerHTML=`<tr><td colspan="9" class="tbl-empty">No students found.</td></tr>`;return;}
+  tbody.innerHTML=data.students.map(s=>`<tr>
+    <td><a class="id-link" href="/dashboard/${s.id}">#${s.id}</a></td>
+    <td>${s.gender}</td><td>${s.ethnicity}</td><td>${s.attendance}%</td>
+    <td style="font-weight:700">${s.avg_cgpa}</td>
+    <td>${pBadge(s.prediction)}</td><td>${rBadge(s.risk_level)}</td><td>${probCell(s.risk_prob)}</td>
+    <td><button class="tbl-edit-btn" onclick="openEditModal('${s.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${s.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+async function loadLive(){
+  const data=await fetch('/api/live-stats').then(r=>r.json());
+  document.getElementById('lv-total').textContent=data.total;
+  document.getElementById('lv-atrisk').textContent=data.at_risk;
+  document.getElementById('lv-safe').textContent=data.safe;
+  document.getElementById('lv-prob').textContent=data.avg_risk_prob+'%';
+  document.getElementById('live-sub-count').textContent=data.total?`${data.total} submission${data.total!==1?'s':''}`:' Waiting for submissions';
+  const body=document.getElementById('live-list-body');
+  if(!data.recent.length){body.innerHTML=`<div class="tbl-empty">No submissions yet.</div>`;return;}
+  const pc=p=>p>=70?'var(--high)':p>=40?'var(--amber)':'var(--emerald)';
+  body.innerHTML=`<div class="live-list">`+data.recent.map(r=>`
+    <div class="live-row">
+      <div><div class="live-pred">${r.prediction} — ${r.risk_level}</div><div class="live-time">${r.timestamp}</div></div>
+      <div style="display:flex;align-items:center;gap:12px"><span class="live-cgpa">CGPA ${r.avg_cgpa}</span><span class="live-prob" style="color:${pc(r.risk_probability)}">${r.risk_probability}%</span></div>
+    </div>`).join('')+`</div>`;
+}
+
+function showSection(name,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');btn.classList.add('active');
+  if(name==='academic')loadAcademic();if(name==='demographics')loadDemographics();
+  if(name==='students')loadStudents();if(name==='live')loadLive();if(name==='classes')loadSections();
+}
+
+async function refreshSection(btn){
+  const icon=document.getElementById('refresh-icon');icon.classList.add('spinning');btn.disabled=true;
+  try{const active=document.querySelector('.section.active').id.replace('sec-','');
+    if(active==='overview')await loadOverview();if(active==='academic')await loadAcademic();
+    if(active==='demographics')await loadDemographics();if(active==='students')await loadStudents();if(active==='live')await loadLive();if(active==='classes')await loadSections();
+  }finally{icon.classList.remove('spinning');btn.disabled=false;}
+}
+
+setInterval(()=>{if(document.getElementById('sec-live').classList.contains('active'))loadLive();},30000);
+loadOverview();
+
+{% if is_lecturer %}
+async function loadSections(){
+  const data=await fetch('/api/sections').then(r=>r.json());
+  const box=document.getElementById('sectionCards');
+  if(!data.sections.length){box.innerHTML='<div class="tbl-empty">No class sections yet.</div>';}
+  else{box.innerHTML=data.sections.map(s=>`<div class="section-card ${s.active?'active':''}">
+    <div class="section-name">${s.name}</div>
+    <div class="section-meta">
+      <span>Sem ${s.semester}</span><span>${s.students} students</span><span>${s.at_risk} at-risk</span><span>Avg CGPA ${s.avg_cgpa}</span><span>${s.model}</span>
+    </div>
+    <div style="margin-top:12px"><a class="btn-action btn-ghost" href="/lecturer/switch-section/${s.id}">Switch Section</a></div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      ${s.student_rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr><th style="text-align:left;padding:6px;color:var(--dim)">Student</th><th style="text-align:left;padding:6px;color:var(--dim)">CGPA</th><th style="text-align:left;padding:6px;color:var(--dim)">Risk</th><th style="text-align:left;padding:6px;color:var(--dim)">Prob</th><th style="text-align:left;padding:6px;color:var(--dim)">Actions</th></tr></thead>
+        <tbody>${s.student_rows.map(st=>`<tr>
+          <td style="padding:7px 6px"><a class="id-link" href="/dashboard/${st.id}">#${st.id}</a></td>
+          <td style="padding:7px 6px;font-weight:700">${st.avg_cgpa}</td>
+          <td style="padding:7px 6px">${rBadge(st.risk_level)}</td>
+          <td style="padding:7px 6px">${st.risk_prob}%</td>
+          <td style="padding:7px 6px"><button class="tbl-edit-btn" onclick="openEditModal('${st.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${st.id}')">Del</button></td>
+        </tr>`).join('')}</tbody>
+      </table>` : `<div class="tbl-empty">No students in this section yet.</div>`}
+    </div>
+  </div>`).join('');}
+  const notices=await fetch('/api/notifications').then(r=>r.json());
+  const list=document.getElementById('notificationList');
+  if(!notices.notifications.length){list.innerHTML='<div class="tbl-empty">No notifications yet.</div>';return;}
+  list.innerHTML=notices.notifications.map(n=>`<div class="notice-row">
+    <div><strong>#${n.student_id}</strong> ${n.old||'Unknown'} → ${n.new}<div class="card-sub">${n.created_at} · ${n.recipient}</div></div>
+    <span class="badge ${n.sent?'bs':'bm'}">${n.sent?'Queued':'No email'}</span>
+  </div>`).join('');
+}
+
+document.getElementById('sectionUploadForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const msg=document.getElementById('sectionUploadMsg'), form=new FormData(e.target);
+  msg.style.cssText='display:block;background:var(--info-lt);border:1px solid var(--info-border);color:var(--blue);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';
+  msg.textContent='Uploading section and training model...';
+  try{const res=await fetch('/api/sections/upload',{method:'POST',body:form});const data=await res.json();
+    if(data.success){msg.style.cssText='display:block;background:var(--low-lt);border:1px solid var(--low-border);color:var(--low);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.message;e.target.reset();loadSections();}
+    else{msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.error;}}
+  catch(err){msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent='Server error.';}
+});
+{% endif %}
+
+// STUDENT FORM
+const STUDENT_FIELD_MAP={student_id:'add_id',Gender:'add_gender',Ethnicity:'add_ethnicity',Age:'add_age',ParentalEducation:'add_edu',StudyTimeWeekly:'add_study_hours',StudyMethod:'add_method',Tutoring:'add_tutoring',Extracurricular:'add_extracurricular',Sports:'add_sports',Music:'add_music',Volunteering:'add_volunteering',Sem1_CGPA:'add_sem1_cgpa',Sem2_CGPA:'add_sem2_cgpa',Sem3_CGPA:'add_sem3_cgpa',AvgCGPA:'add_avg_cgpa',Sem1_AttendancePct:'add_sem1_att',Sem2_AttendancePct:'add_sem2_att',Sem3_AttendancePct:'add_sem3_att',OverallAttendancePct:'add_overall_att',AttendanceTrend:'add_att_trend',Sem1_BarredSubjects:'add_sem1_barred',Sem2_BarredSubjects:'add_sem2_barred',Sem3_BarredSubjects:'add_sem3_barred',TotalBarredSubjects:'add_total_barred',TotalFailedSubjects:'add_total_failed',RiskProbability:'add_risk_probability',PredictionLabel:'add_prediction_label',RiskLevel:'add_risk_level'};
+['Math','Science','English'].forEach(subject=>{const lower=subject.toLowerCase();[1,2,3].forEach(sem=>{STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Quiz`]=`add_sem${sem}_${lower}_quiz`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Assignment`]=`add_sem${sem}_${lower}_assignment`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_FinalExam`]=`add_sem${sem}_${lower}_final`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Absences`]=`add_sem${sem}_${lower}_absences`;});});
+
+function clearStudentForm(){Object.values(STUDENT_FIELD_MAP).forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('add_id').disabled=false;}
+function collectStudentPayload(){const p={};Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&el.value!=='')p[k]=el.value;});return p;}
+function fillStudentForm(student){Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=student[k]??'';});}
+
+function openAddModal(){document.getElementById('studentFormMode').value='add';document.getElementById('editOriginalId').value='';document.getElementById('studentModalTitle').textContent='Add new student';document.getElementById('studentModalSub').textContent='Enter profile, academic summary, subject marks, and attendance details.';document.getElementById('addSubmitBtn').textContent='Add student';document.getElementById('addModal').classList.add('open');document.getElementById('addModalError').style.display='none';document.getElementById('addModalSuccess').style.display='none';clearStudentForm();}
+function closeAddModal(){document.getElementById('addModal').classList.remove('open');}
+
+async function openEditModal(id){clearStudentForm();document.getElementById('studentFormMode').value='edit';document.getElementById('editOriginalId').value=id;document.getElementById('studentModalTitle').textContent=`Edit student ${id}`;document.getElementById('studentModalSub').textContent='Update profile, academic summary, subject marks, and attendance details.';document.getElementById('addSubmitBtn').textContent='Save changes';document.getElementById('addModalError').style.display='none';document.getElementById('addModalSuccess').style.display='none';document.getElementById('addModal').classList.add('open');
+  try{const data=await fetch(`/api/students/${id}/full`).then(r=>r.json());if(!data.success)throw new Error(data.error||'Unable to load student.');fillStudentForm(data.student);}
+  catch(e){const eb=document.getElementById('addModalError');eb.textContent=e.message;eb.style.display='block';}
+}
+
+async function submitAddStudent(){
+  const btn=document.getElementById('addSubmitBtn'),errBox=document.getElementById('addModalError'),sucBox=document.getElementById('addModalSuccess');
+  errBox.style.display='none';sucBox.style.display='none';
+  const student_id=document.getElementById('add_id').value.trim();
+  if(!student_id){errBox.textContent='Student ID is required.';errBox.style.display='block';return;}
+  const mode=document.getElementById('studentFormMode').value;
+  const payload=collectStudentPayload();payload.student_id=student_id;
+  const url=mode==='edit'?`/api/students/update/${document.getElementById('editOriginalId').value}`:'/api/students/add';
+  btn.textContent=mode==='edit'?'Saving…':'Adding…';btn.disabled=true;
+  try{const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await res.json();
+    if(data.success){sucBox.textContent=data.message;sucBox.style.display='block';setTimeout(()=>{closeAddModal();loadStudents();},1200);}
+    else{errBox.textContent=data.error;errBox.style.display='block';}}
+  catch(e){errBox.textContent='Server error.';errBox.style.display='block';}
+  finally{btn.textContent=mode==='edit'?'Save changes':'Add student';btn.disabled=false;}
+}
+
+async function uploadBatchFile(){
+  const input=document.getElementById('batchFile'),msg=document.getElementById('batchImportMsg');
+  if(!input.files.length)return;const form=new FormData();form.append('file',input.files[0]);
+  msg.style.cssText='display:block;background:var(--info-lt);border:1px solid var(--info-border);color:var(--blue);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent='Importing students…';
+  try{const res=await fetch('/api/students/import',{method:'POST',body:form});const data=await res.json();
+    if(data.success){msg.style.cssText='display:block;background:var(--low-lt);border:1px solid var(--low-border);color:var(--low);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.message;loadStudents();}
+    else{msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.error;}}
+  catch(e){msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent='Server error.';}
+  finally{input.value='';}
+}
+
+let _deleteId=null;
+function openDeleteModal(id){_deleteId=id;document.getElementById('deleteStudentId').textContent='#'+id;document.getElementById('deleteModalError').style.display='none';document.getElementById('deleteModal').classList.add('open');}
+function closeDeleteModal(){document.getElementById('deleteModal').classList.remove('open');_deleteId=null;}
+async function confirmDelete(){
+  if(!_deleteId)return;const btn=document.getElementById('deleteConfirmBtn'),errBox=document.getElementById('deleteModalError');
+  errBox.style.display='none';btn.textContent='Deleting…';btn.disabled=true;
+  try{const res=await fetch(`/api/students/delete/${_deleteId}`,{method:'DELETE'});const data=await res.json();
+    if(data.success){closeDeleteModal();loadStudents();}else{errBox.textContent=data.error;errBox.style.display='block';}}
+  catch(e){errBox.textContent='Server error.';errBox.style.display='block';}
+  finally{btn.textContent='Delete';btn.disabled=false;}
+}
+
+document.getElementById('addModal').addEventListener('click',e=>{if(e.target===document.getElementById('addModal'))closeAddModal();});
+document.getElementById('deleteModal').addEventListener('click',e=>{if(e.target===document.getElementById('deleteModal'))closeDeleteModal();});
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+attendance,assignment,quiz,gpa,result,prediction,risk_score,risk_level
+80,75,70,3.0,1,1,0.26,Low Risk
+60,50,40,2.0,0,0,0.96,High Risk
+90,85,88,3.8,1,1,0.26,Low Risk
+50,40,30,1.8,0,0,0.96,High Risk

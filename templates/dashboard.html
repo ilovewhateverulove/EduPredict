@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduPredict — Student {{ student.id }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:wght@600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white:  #FFFFFF;
+    --snow:   #F7F8FC;
+    --paper:  #EEF0F7;
+    --panel:  #F3F4F8;
+    --border: #E5E7EB;
+    --border2:#D1D5DB;
+    --ink:    #111827;
+    --ink2:   #374151;
+    --muted:  #6B7280;
+    --dim:    #9CA3AF;
+    --violet:#7C3AED;
+    --blue:   #2563EB;
+    --accent: #2563EB;
+    --teal:   #0D9488;
+    --emerald:#059669;
+    --amber:  #D97706;
+    --rose:   #E11D48;
+    --soft:   #EFF6FF;
+    --white:  #FFFFFF;
+    --high:   #DC2626;
+    --med:    #D97706;
+    --low:    #059669;
+    --safe:   #059669;
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  html { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--white); color: var(--ink); }
+  body { min-height: 100vh; }
+  .top-stripe{height:4px;background:linear-gradient(90deg,var(--violet),var(--blue),var(--teal),var(--emerald),var(--amber),var(--rose));position:sticky;top:0;z-index:201}
+
+  /* ── Topbar ── */
+  .topbar {
+    background: rgba(255,255,255,0.96);
+    border-bottom: 1px solid var(--border);
+    padding: 0 22px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 4px;
+    z-index: 200;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(12px);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration:none;
+  }
+  .logo-mark{width:24px;height:24px;background:linear-gradient(135deg,var(--violet),var(--blue));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+  .topbar-divider { width: 1px; height: 18px; background: var(--border); }
+  .topbar-label { font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color: var(--dim); }
+  .topbar-id { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; color: var(--blue); }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .back-btn:hover { border-color: var(--border2); color: var(--ink); background: var(--snow); }
+
+  /* ── Risk banner ── */
+  .risk-banner {
+    margin: 24px 32px 0;
+    border-radius: 14px;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    border: 1px solid;
+    animation: fadeIn 0.5s ease both;
+  }
+  .risk-banner.high   { background: rgba(255,77,77,0.08);  border-color: rgba(255,77,77,0.25); }
+  .risk-banner.medium { background: rgba(255,152,0,0.08);  border-color: rgba(255,152,0,0.25); }
+  .risk-banner.low    { background: rgba(0,200,83,0.08);   border-color: rgba(0,200,83,0.25); }
+  .risk-banner.safe   { background: rgba(0,200,83,0.08);   border-color: rgba(0,200,83,0.25); }
+
+  .banner-left { display: flex; align-items: center; gap: 16px; }
+  .banner-icon {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .high   .banner-icon { background: rgba(255,77,77,0.15); }
+  .medium .banner-icon { background: rgba(255,152,0,0.15); }
+  .low    .banner-icon { background: rgba(0,200,83,0.15); }
+  .safe   .banner-icon { background: rgba(0,200,83,0.15); }
+
+  .banner-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; }
+  .high   .banner-title { color: var(--high); }
+  .medium .banner-title { color: var(--med); }
+  .low    .banner-title, .safe .banner-title { color: var(--low); }
+  .banner-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .risk-prob-pill {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    padding: 10px 22px;
+    border-radius: 12px;
+    border: 1px solid;
+  }
+  .high   .risk-prob-pill { color: var(--high); border-color: rgba(255,77,77,0.3);  background: rgba(255,77,77,0.08); }
+  .medium .risk-prob-pill { color: var(--med);  border-color: rgba(255,152,0,0.3);  background: rgba(255,152,0,0.08); }
+  .low    .risk-prob-pill, .safe .risk-prob-pill { color: var(--low); border-color: rgba(0,200,83,0.3); background: rgba(0,200,83,0.08); }
+
+  /* ── Main grid ── */
+  .main { padding: 20px 32px 40px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── KPI cards row ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .kpi-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 8px; }
+  .kpi-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; color: var(--ink); }
+  .kpi-val.accent { color: var(--accent); }
+  .kpi-val.danger { color: var(--high); }
+  .kpi-val.warn   { color: var(--med); }
+  .kpi-val.ok     { color: var(--low); }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Charts row ── */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+  .chart-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .chart-sub   { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .chart-wrap  { position: relative; }
+
+  /* ── Bottom row ── */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    animation: fadeUp 0.5s ease 0.2s both;
+  }
+  .info-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+  .info-row { display: flex; flex-direction: column; gap: 2px; }
+  .info-key { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .info-val { font-size: 13px; color: var(--ink); font-weight: 600; }
+
+  /* ── Activity pills ── */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .pill {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+  .pill.yes { background: rgba(0,200,83,0.1);  border-color: rgba(0,200,83,0.3);  color: var(--low); }
+  .pill.no  { background: var(--white); border-color: var(--border); color: var(--muted); }
+
+  /* ── Attendance bar ── */
+  .att-bar-wrap { margin-top: 8px; }
+  .att-bar-track { height: 8px; background: #E5E7EB; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .att-bar-fill  { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .att-bar-label { font-size: 11px; color: var(--muted); }
+
+  /* ── Animations ── */
+  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+  @media (max-width: 640px) {
+    .topbar  { padding: 0 16px; }
+    .main    { padding: 14px 16px 32px; }
+    .risk-banner { margin: 14px 16px 0; }
+    .charts-row, .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ── -->
+<div class="top-stripe"></div>
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="/" class="logo"><span class="logo-mark">&#9670;</span>EduPredict</a>
+    <div class="topbar-divider"></div>
+    <span class="topbar-label">Student&nbsp;</span>
+    <span class="topbar-id">#{{ student.id }}</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="javascript:history.back()" class="back-btn">&#8592; Back</a>
+    {% if session.get('admin_logged_in') %}
+    <a href="/admin" class="back-btn" style="border-color:rgba(37,99,235,0.25);color:var(--blue)">&#9632; Admin dashboard</a>
+    {% elif session.get('lecturer_logged_in') %}
+    <a href="/lecturer" class="back-btn" style="border-color:rgba(37,99,235,0.25);color:var(--blue)">&#9632; Lecturer dashboard</a>
+    {% else %}
+    <a href="/student/logout" class="back-btn" style="border-color:rgba(220,38,38,0.25);color:var(--high)">&#8594; Sign out</a>
+    {% endif %}
+  </div>
+</header>
+
+<!-- ── Risk Banner ── -->
+{% set risk_class = 'high' if student.risk_level == 'High Risk' else ('medium' if student.risk_level == 'Medium Risk' else 'low') %}
+<div class="risk-banner {{ risk_class }}">
+  <div class="banner-left">
+    <!-- Student profile icon -->
+    <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAEBAQEDASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAEHAgUGAwQI/8QARhAAAQMCAQYJCgUEAQMFAQAAAQACAwQRMQUSEyFBUQYUIiMyM2GBkQckNEJScaGxwfBDU1TR4RVicpLxJYKiFkRjc7Li/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AP1uW8aAgedG2LUHH1tiPIq7B50WiwJ9ZCBUEQz2jjj6DvaQ+c2E/NCPof3eKA48bIlfzRjwb7SOvUO4zING+LBntW1qSeMkSVA0LmdFuGd4qHXnInlOjlZ0Ge1tQDeRwrXHMe3CPaUuS7j1rvAtotu5DzjhVO5M7cI9/wBVJJzuN2tONWj37PegjOLXceAu92oxbRsRp0LjWC73yYx7RdT0TxsC9QdRj3bPeoHNuNVGA+d/Sj3fVAaeLXqGc66TFg9XagcaS8kfPGXED1fu6NJgvNDaSSTps9lB5uCacaZz+mB6vgglvmozIzphLiR6qxa0UzTTsdpWy4v9nYpaOLjMgvK2Tpn2V5zywUMRYZ49C/pyOcAG7EHoBoAaRpz2SYybBf8A4Qclgob8g/i/FaCv4YZByc11LHVmqa7HQtLj44fFaWo8odO2mdTUuTZXR7DLIA7G+y6DuSA9vEcGNwl2b1JbpWijcQ1kf4mwqtKjygZTfSinho6SNg2uDnH5hfJLw4y/JCITJTNY3ANh/coLWd5wBTOtGyI6n+1ZYu86AjfaIRYE+sqqfw34QPjZG+amLWYcyF7/APr3LTwxs8NHIGYWY5p+aCzyONkOkGh0eAPrI48ZPGH806LBh9bauCHlDM7mGsyZYswMUv0I+q29Jw5yHXPD6x01JKzoB0ZLT3i6DprmdwrHDMfHhHtdZL57xWkZr2/hbSvmo8oUeUgKuCqgllj6LI3g37sV9IJceNvGbO3UIt/1QL8rj3r/AJW3cjXaO9YOU9+MW0ILB3G8ag/hfBG8gmpZyp3dKPcgA8XealvOOlxj9najSaU6eMaUyC5aPV2oCYTp4hpJX9Jnso0mmGlhGlkk6bfZ8EEjzMO0Z02l1G3q/d1AtSN0LDpRLi4eqpaBTE6DndJ07er4e9QAKYmODnWSdN3s7NiA0aFhpWkPZJjJsbfUljG3iQOdG/GTcnVNNPEc+F/Sk9nepsGNFKw50D+lJu+iCLck0I6vHS7N6Hls4kTZjcJNhshAtxS/MHXpfvUlg5nFH6oG4Sb0EcRj/Ut8P5ROJ0n548QiCSGykMquRC3q3YX+wlhNqrObDer2X/dSc1wzazkwjqjvHd2IeVbjozQOqt/HcggEzHOrbRys1xgarqCdLzlQMyobrjZhfdq96klz3eejNlHVAbfDtsh1kOq9VV+GBt3dmKCDdztNILVbegy2Pd4qbnrz6Zsj/j3Ji7Om1VnqDZ2dm9Nd88jz7Y3s+WCBdw59uurPSj/j3KADGDNDyqt3TZu36llc3zmDz31m9nywXxZVynRZIpTWVE7Yp/XadZJ3Abe5B9YBiOfSjOnf1jcbfZWqy3wiyVkEaqpr539OJvKcO7Z3rhsvcNa2re9mTg+iheLOc13OP36/VHYPFcodbiTidZJOsoOuylw7yg4PjyXGKOJ2Lnct578B4d65eqqqmsl0tXPJM/e9xNvdfBeKIJucFCIgIiICIiAiIgyje+N7ZI3uY9pu1zTYj3FdBkvhllqiqGSyzisDdk2s/wC2K51EFrZF4ZZJr36SRxo644Nl6Dtmo/vZdIx128Yhs6pcOU3s9yoX7st1we4TZUyLK008ulh2wya227NyC4NbDpadudUO6xtsO5CXRHPpbPmf1oxsf+Vp+DvCOhywzOoHGOvIvLDIQD2kbD3LcC7ddGLynrRuPf2oAAhFqI6TP6y+vN+9aC0QzKXlxP1SE67fYUizb8Q5V+tvsHf3qAQGltFyoj1p3ePYga2HRQWfTO6x+Nt+tLNbzEfKpD0n7u9G2a0tpuVSnrDu3/BCQQAz0P13bf3QRybaEa6O+t/b7/epbyhoX6qMdF+/vS7QM0a6L2u354pszZPQvUd968boJ0OT/wA4/wCwRYZmTvaPiUQZOIDQas50J6oD+OxHgDN47ygeqsjs1gDqoZ8LurGNvsKXWiHnfLB6vsQRrBArc4yHq7YA/dkfqcOMi9T+GdnZh2pYxWbWHSSu6s42R3IcGVPLqXdW4a7bvigOPOBsvpnqHZ2dm9Tys+x9N2HZb5YKDdrtHJyqw9B+7dr8VyvDbhSMkNdQ0RD8p+vNiIgfrZB9XCzhRS5EYYo7S5WI1tHRYNhd3bFV+VMoVmU6x9XWzOlldtOA7ANi+eSSSWR0sr3PkcSXOcbklYoCIiAiIgIiICIiAiIgIiICIiAiIgyikkhlbLE90cjDdrmmxad4K7/gjwzfI5lHlBzI53usKk6g7/LYDfbgq+RBfLC1zSaHD8Q9mzHvUtsQTRDmh1t/57FWnAvhZLQllBXSkUxNmy7Wdh3t+SsppErQ+j5MIF329Yf8IDSCy8APFfxBtO/twU6szOi9D9cbf3QWeNJByKZvWM370FnDSs1UY6TN/wB6kDk5mcPQt22/zxT1byC9EegNv74obZulHoXsffamoDSya6M9Fm5BjfJvsu8CijTUH5LvBEGd9BztRzkUnQbjm+KHzbXU86H9XtzfHBLimtNINK2XW1vs7VBJpbOk57S4X9VBNjT83UnSvk6Dsc3xU9RzE/OTP6D8c3Zidagg0gEUp0zpOi72VrOE2VouD2SpHT8/PICIe12zuGKDWcOOEf8ARKV2T4XNflOQXEmOiadt9+Ngqse573ue9xc5xuSTck7yvSsqZ6yqkqqmR0ksjs5znHEryQEREBERAREQEREBERAREQEREBERAREQEREBdnwC4Sup5IslVs4ZTk2ieTa39p7Ds3LjEQX11o4xEMyBnTZhe2OpAQ/zpgzaZvSjwv3YLkfJ9l45RpxRVc1qilZdoP4zB8yMCuuvnjjgGbG3UYt6ASD51bzb8r4YYYpqaeNP10zujHu7sEJ1cdAtHhovgl9GOOHlRu1CLcgcao/0/wD4BFjx2L9L8UQZX4tzwbpTLiz2VBJpACOd0uOzNUgmA6WAaWR+t7R6vgno1zADNpL59teagxcRRtLS4SseNb79AKnuF2VjlfKr3xyOfSREtgB1XHtW7f2Xc+UfKbcl5I/plJMHSVt8919bWDHxw8VV6AiIgIiICIiAiIgIiICIiAimyhAREQEREBERAREQEREHvk+rnoK2Kspnlk0Tg5p+h7DgroyPlCLK2TYcrwuAu2xiGxw1EKkF13kzysaTKponOzmza42n8wbO8fIILMuTatsb/lfBOrHHQLudjHuU3J87tz41aP4e9QOQ81bdc7sYt31QP6h/8DUWXHKn9M7wKIMAXQO0lMNLK/rG45qkHQXNMRLn65L+qmtuukGdM7rRjb7K0nDfKEeS+DlQ+mkOlqAIe0Odu7s7wQVnwor2ZRy7U1ETi6EOzIifYGB78e9axCLIgIiICIiAiIgIiIC+/JGR8o5VkzaGmdIAbOedTW+8rf8AA3gk7KIbXZRDo6S92R4Ol/Zqsamp4aaFsNPEyKJos1rBYBBxWT/J9HZrq+ve47WwCw8T+y3kHA/g9EwA0GkPtSSvJPxAW+CINJJwS4OvaQcmsb2tkeD/APpaiv8AJ/QSEuo6qeA7Gvs9v0PxXZIgqHLnBfKuSbvkiE8A16WLWB7xiFpFfJFxY4LjuF3A6GqjfWZKjbFO0EuhGpsnu3H4FBW6KXMfG4se0tc02IIsQVCAiIgIiICIiAsoZJIZmTQuLJGODmuGwg3CxRBduRK9mU8l0+VYnB1TIwXj2A4H6r7AS1xqGC9U7pR7u5cL5Ka4ZlVQtPnDCJYQdoOp308V3YBHLj11h6Tfn9EDjNb+m+BRZaTKPsDwCIMRe54p134v2e1V95V6qB1RR0UGLGmWT/I6h9fFWEM6QltIQydvWE7fsqn+HNSKnhVXOaLNY4RtHuAB+N0GkKIiAiIgIiICIiAuj4CZC/q+UDNUDzSnIL/73bG/U9nvXOWJ1DFXPwZya3JWRaekzQHgZ0p3vOP7dyDYtaGtAaAABYADUApREBERAREQEREHD+UfIDXxOyxSMAe30hoHSHte8bVXyviRjJY3RyMD2PBa5pwIOIVK8IKB2TMsVNEQbRv5J3tOsHwQfCiIgIiICIiAiIg3XAisfRcJ6N8bg0yO0N/8tXzsrg2kRHz0dM/epUPE90crJWEh7HBzSNhGsK8qOZtVTQvi9Kkja8v2EEA/VB75uUd48QiaLKP5o8f4RBAGldo6bm5Y+sfe2cqNypKZ8p1U5N9JM91/eSrtqnGSmmZHzb4GOLn+1YKiWm7Qd4QSiIgIiICIiAiIg2vBGnbVcJaGF7c5ulDiN+byvormdiqn8m4B4VwX2RvI/wBSrYdigxREQEREBERAREQFXXlXpmsynSVQFjLEWu7c0/yrFXD+VoDiuTztz3j4BBXyIiAiIgIiICIiCCbK5OBk4q+DVA2IZtQIQHSYdHVj3Km7K2PJu/jHBOnpW8iRr5OXfZnk/VB0vFav9Sf9iix4nN+o+JRB82VL1OSqqEc1oYX8r2rNIVGtN2g9ivarYKqklp5Ro2sjc1rva1EKiW9EX3IJREQEREBERAREQbzgJNoeFVESbBznM8WkK3nKiaaaSmqYqiI2fE8Pae0G6u+gqo62hgq4jyJWB47L7EHsiIgIiICIiAiIgLgfK1MNLQU19Ya9577AfIrvxiFUHDfKH9R4R1EjTeOK0TPc3E+N0GkREQEREBERAREQFaPkwOm4MNprZl55DpO/BVcrW8mzS/gpBTvGZG+SR+f/ANxQdH/T2/qx4fyiniNP+o+IRBFmSgR1J0cTNUbsM7x7FR2U4TT5Sqqci2jme3wJV5OzXjMq+RC3qjhf7Cp/hzTyU3CmtbIzNz3CQdocL38boNKiIgIiICIiAiIgLvPJlltrb5GqX2uS6nJ37W/Ud64NZRySRSNkieWPabtcDYgoL3RcvwN4UwZUibSVr2xVw1C+oS9o7exdQgIiICIiAiLWcIct0WRaMzVDw6VwOihB5Tz9BvKD4+G+W25JyU5kT7Vc4LYgMW73d3zsqlX2ZZylU5Ur5KupddzzqGxo2Adi+NAREQEREBERAREQFcnBGJ0fBXJ9NMNHBog/Pw1nX9VTjGGR7WNF3ONh71elKwQ0UVJJYUkbGta8dgQZ8Xov1A/2CKdFk7813iiCbAjzy+gHVfY7FX3lZpJm1VHXytHLaYbjbY3HwJVgktbY1YDoT1Qtey0fDqhfV8GqllQc6Rg0tPbEZuPwuEFQoiICIiAiIgIiNBcQ0AknUAEBF3HBbgS6UR1mWM5kZ1tpxqLh/cdnuxThbwMfE59bkdhfGdbqcdJv+O8diDiGuc1wc1xa4G4INiF1/B/hzVUjGwZSjNXENQkBtIB8iuQc0tJDgQRqIOxQguXJ3CHI1eG6CviDnepIcx3gVtBrF26xvCoYgHFe0NXVQi0NTPGNzZCEF6WO4r4soZVydQel1sEJ9lzxneGKpqSurZG5slZUPG4yuP1Xz7b7d6CwcucPY2B0WSIC92GmlFmj3NxPeuEraqprah1RVzPmldi5xXiiAi6DgvwWrMsPbNKHU9FtlI1u/wARt9+C6nL/AAIo6inDslebTsbYNcSWyW37j2oK2Re9bSVFFUOp6uF8UrcWuGteCAiIgIiICIiDdcB6RlXwno2yi8UbtK/3N1/Oyt8awRJ6F6n07Vw3koycGw1OV5mXicdCPdibd9vBd2QAM9+ujPRYgx/6Z2+JRTnZP/JPgiASIs2SpGkieObaNeb9hQ8CFoFZzwf0BjZS46BolmGlZJrY0+qno4HGOeEnQvrzUFNcLMlSZHy7UUbm2bfPj3Fhwt8u5apWb5TMjSS5Njq87ST09ydesx7R3Gx8VWSAiIgIiIMo2PkkbHG0ve42a0C5J3KzeBXBWPJrGV9exr61wu1p1iH+e1fJ5O+DoghZletjOmeLwMd6jfa952di7a6CEREGly/wZyZlcOfLHoag4TRix79hXE5W4E5Wo3Z1KG1sW9hs4e8H6XVoIgo2qpamlfmVMEsLtz2kLxur3e1r25r2hzdxFwvhmyJkaY3kyVROO/Qt/ZBS11lEx8rgyJjnuOAaLlXKzIORWOu3JVGD/wDS39l9tPBBTtzaeGOEbmNDfkgqjJvBLLlc5tqQ08ZxknOaB3Y/BdlkLgVk6hIlrDx2YYZwswf9u3vXVKEBoDQAAABqACIiDVcJch0mW6MxzNzJ2jmpgNbD9R2KpsrZPqcmVz6SqZmyN27HDYR2K7lpuFuQ4st5PzbBtTECYX7juPYUFPovSoikgmdDKxzJGEtc0jWCvNAREQFLGPkkbFG0ue9wa0DaTgoXY+TLJBqK92WJ2A01HgHC+e8jZ7se8IO7yFQtyZkamhbyqaNga9m1z9p8blfbcNZxh4zqU9GLduU5wzTV2Agw0X3qTUxvGncqB2EW76IMeMUP6Y+A/dFlxuk/St/1CIF+KnTHnBLg32dqAmk1k6XSYf2oDxUmZnOulxaPV2oLUvKZzulxA9VBBYIGugltOJRa51gbPqqh4aZDfkPLD4ACaeTlwu2W3e8K3x5mNFGdMJdTnD1di1XCbI0GUsmOydYPdnaSKb8t/wC29BTSL3rKeajqpaWoYWSxOLXtO8LwKAt/wGyL/WMrgzMJpIOXLudub3/JaBXBwJyX/S8gxMcBpphpZewnAdw1INyAGgACwCKSoQEREBERAREQEREBERAREQEREHB+U7IrQ1mWKZlj0KgD4O+nguCV6VlPFWUktJM28czCxw7CqUypRy0GUJ6ObW+F5aT7Xb3oPmREQe1DSzVtXHS07C+SR2aANnb7grmyFk2HJmSoGQAiOFvKadZkdtcfeStB5PODvEKP+q1YLax+uONw1tbiO8rrSS+1abNkZhFbFABB89sLflfBByHcdtcO/C3XTOueO6tJ+V8FAIY41ws6R2oxbkGfHx+m+KLDjz/yB8f2RBJPFzpYGmSWTptxzduxDen10o0pf0xjm+ChudG7PpeXK7rGnXm/ZU9Xro+WXdZtsgACm5ul51j+mcc3wS7YeZg5yF/Tfjm7MRqRoEd20nORu6w4kBQAI26Ol5VO7rHY27/cg5bh1wZblGPjFAwOqY2637JB7JOFxs96rBzXNcWuaWuBsQRYg7lfOprTFHc0rum/dv1rkOG3BVmUM6vyY0CVo5Wvkyf/ANfNBxHBSg/qOXqSmcLs0gc//Fus/KyuYahYKv8AyWZPe2rrK2ZhaYrQtBFiHYu+Q8V36CVCIgIiICIiAiIgIiICIiAiIgIiICrnyqUIiynBlBgsJ2Zj/wDJv8H4KxlzXlHozVcGpJWC76Z4l7sD80FVrt/J9wXFQW5XykMyJnKp4najKR61t3zXnwI4JCrLMo5XBipTyoY3ajKd5/t+asYAODeNDRyM1RNAsD3IJ6zziU5k7OizDOthqxU3c88ZfZtS3ox7+7Heo6REs5LalvQbhfdq96XJdpZdVWOgzf3eKBc+lOHnQPV/DDHBByL1bRepd0o93dilznGb/wB57H8e5Bcc7Hrqz0mHZv1IHGav9N/4FE0uUPyR/qiAM4OJpOu/Fv8Ae9G8m/EtZ/Fv/PepGc4WpDaYdaTt8e1ByvQjYjre3xQRHm2PETeI9bf+UGphFLrpr84T8fgjcwkmidmxAc59lQAHAml1Uw6wb9/bggn1SIvQ/XO3tUcnMsPQjidv74qbCxfF6H67fn2pdubnj0HaPvXigxEbIyXxta2mJ1PtrJ7dpWWwHYdYO9LgDPd6F6o7fnipuWcuRxFMerAx7O1BiiPuxoc+wa48ntCICIiAiIgIiICIiAiIgIiICIpdyGCR+pl7XQQTYXOCl7ITGW1beZe2wvrDuyyjNY059SM6B3QI2+9Tqb6ZrhPVAbPBBDr2HHgB+Vb+O5S7WQazVMBzVt//AChOaAK45xPVdnh3I7k245rmPVW/jtQHG7xxg2qvwx8sO1HZxdeT0z1Bs7OzehsDm1BvVnqz8sO1S4kODHnOrPUO76IIOdpA4247u2W+WCA8rm/TPWHzTNN80nz3G/3qwQXzsyP00dJ33q3IM/8AqO4eARRmZT9seIRBiAZSWUl45m9Y7DOQXltxTmy3rNl0ANRzMBEb4+m72lIBqeoOiMfT/u8EGItMc+kGjjb1gwzvvWp1Sc5Tc3Tt6xmF9+r3I0ioGlpxomR9NvtI0icGohGjhZ02YZ1tZw1IHS5+Lk0o6ce/fq8Eu0jTgWo9sf8AHvQWkBq2cmnb0o9+/sQFubxwDzcatF8MMEC7QNO4XpDgzd3e9OjaaYZ1K7oMxtu1JcNbxsi9O7UI92zDBCdEG1Mgz4X9GPdfBBIszl1Iz4XdW217fYWIAp7uqs4tf0M3Xb71KXEU/PT85HJ0Gez4o5wpQH1I0rX62DHN8UESB0Ra2Wwc7CxuCpILTZwsUI4qQ2fnnP6B9nxQgwHQTHPlk1Nf7OxBCKSNC9tM8l8r+i7Z3qDdtUKZ2t52jDC6AikC9Uaf1ht2KWjOndC08puKDFFMQEkzomkZzb37kp7Tve1h1sxugIlONOHlhsGY3WMfPRumiJayPph2J26kGVt6WBhMuLBiQmdpRxpl2xR9JntJdrm8aa3Np24x7/ogC7SKh1jTbvWOzD3ocdNKM6ld0Wbt2pADbjmNOfwvh7sUJEYFZIM6B3Rj3fRBJzWXlqOXTu6tmNu5RcRcur5yJ3VtxzULmwsFRMM+J/RZuvgl+LASzjSxya2N9nxQQ4GG3HbyF3Va72+9Sk83yKy0kjurdjb7KEGlPnB0pfqZ/b4+9LGn5qfnXydB3soFiwiKfl1LurffDdr96WLeZk11R1sk3d6EaIiml5cz+jJuQgtcKR5zqh2tsm76oFj1Dj53+Z2e/wBydI6Bmqrb0pN/ehBzuKX84x0vxxxwQDPdxRmqob0pN/figni+UPzviUUcUqv1H/kUQDiFJ2oiA/o96DooiCAhxREBQ7pIiCdhR/RCIgN6AUN6CIgy9TvWI6JREGTlAREA9ILEbfeiIMnI/HvREB+H32oERBl6ix3IiDJvR71iOkiIJdgobs70RBIUN6RREAocERB5oiIP/9k="
+      alt="Student profile"
+      style="width:54px;height:54px;border-radius:50%;flex-shrink:0;object-fit:cover;
+        border:2px solid {% if risk_class=='high' %}rgba(255,77,77,0.5){% elif risk_class=='medium' %}rgba(255,152,0,0.5){% else %}rgba(0,200,83,0.5){% endif %};
+        background:#1A2B4A;">
+    <div>
+      <div class="banner-title">{{ student.prediction }} — {{ student.risk_level }}</div>
+      <div class="banner-sub">
+        ID #{{ student.id }} &bull; {{ student.gender }} &bull; Age {{ student.age }} &bull;
+        {% if student.risk_level == 'High Risk' %}Immediate attention recommended.
+        {% elif student.risk_level == 'Medium Risk' %}Monitor closely. Some risk factors need improvement.
+        {% else %}Performing well. Keep up the good work!{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="risk-prob-pill">{{ student.risk_prob }}%</div>
+</div>
+
+<!-- ── Main Content ── -->
+<main class="main">
+
+  <!-- KPI Cards -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="animation-delay:0.05s">
+      <div class="kpi-label">Average CGPA</div>
+      <div class="kpi-val {% if student.avg_cgpa >= 3.5 %}ok{% elif student.avg_cgpa >= 3.0 %}accent{% else %}warn{% endif %}">{{ student.avg_cgpa }}</div>
+      <div class="kpi-sub">Across 3 semesters</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.10s">
+      <div class="kpi-label">Overall Attendance</div>
+      <div class="kpi-val {% if student.overall_att >= 80 %}ok{% elif student.overall_att >= 60 %}warn{% else %}danger{% endif %}">{{ student.overall_att }}%</div>
+      <div class="kpi-sub">Avg across Sem 1–3</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.12s">
+      <div class="kpi-label">Sem 3 Attendance</div>
+      <div class="kpi-val {% if student.sem3_attendance >= 80 %}ok{% elif student.sem3_attendance >= 60 %}warn{% else %}danger{% endif %}">{{ student.sem3_attendance }}%</div>
+      <div class="kpi-sub">Most recent · {{ student.sem3_absences }} absences</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.15s">
+      <div class="kpi-label">Study Hours/Week</div>
+      <div class="kpi-val accent">{{ student.study_hours }}</div>
+      <div class="kpi-sub">Method: {{ student.study_method }}</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.20s">
+      <div class="kpi-label">Sem 1 CGPA</div>
+      <div class="kpi-val {% if student.sem1_cgpa >= 3.5 %}ok{% elif student.sem1_cgpa >= 3.0 %}accent{% else %}warn{% endif %}">{{ student.sem1_cgpa }}</div>
+      <div class="kpi-sub">Att: {{ student.sem1_attendance }}%</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.25s">
+      <div class="kpi-label">Sem 2 CGPA</div>
+      <div class="kpi-val {% if student.sem2_cgpa >= 3.5 %}ok{% elif student.sem2_cgpa >= 3.0 %}accent{% else %}warn{% endif %}">{{ student.sem2_cgpa }}</div>
+      <div class="kpi-sub">Att: {{ student.sem2_attendance }}%</div>
+    </div>
+    <div class="kpi-card" style="animation-delay:0.30s">
+      <div class="kpi-label">Sem 3 CGPA</div>
+      <div class="kpi-val {% if student.sem3_cgpa >= 3.5 %}ok{% elif student.sem3_cgpa >= 3.0 %}accent{% else %}warn{% endif %}">{{ student.sem3_cgpa }}</div>
+      <div class="kpi-sub">Att: {{ student.sem3_attendance }}%</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">CGPA Progression</div>
+      <div class="chart-sub">Semester-by-semester trend</div>
+      <div class="chart-wrap"><canvas id="cgpaChart" height="180"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Total Marks by Semester</div>
+      <div class="chart-sub">Carry marks vs Final exam (out of 300 each)</div>
+      <div class="chart-wrap"><canvas id="marksChart" height="180"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Assessment Breakdown -->
+  <div style="margin-bottom:16px">
+    {% for sem, sem_label in [('Sem1','Semester 1'),('Sem2','Semester 2'),('Sem3','Semester 3')] %}
+    {% set sem_data = student.assessment[sem] %}
+    <div class="info-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div class="info-title" style="margin:0 0 2px">{{ sem_label }} Assessment</div>
+          <div style="font-size:11px;color:var(--muted)">
+            CGPA: <strong style="color:var(--ink)">{{ sem_data.cgpa }}</strong>
+            &nbsp;&bull;&nbsp; Total marks: <strong style="color:var(--ink)">{{ sem_data.total_marks }}/300</strong>
+            &nbsp;&bull;&nbsp; Carry: <strong style="color:var(--ink)">{{ sem_data.total_carry }}/180</strong>
+            &nbsp;&bull;&nbsp; Final: <strong style="color:var(--ink)">{{ sem_data.total_final }}/120</strong>
+          </div>
+        </div>
+        {% if sem_data.subjects_failed == 0 %}
+          <span style="padding:4px 12px;border-radius:999px;font-size:11px;font-weight:500;background:rgba(0,200,83,0.12);color:var(--low);border:1px solid rgba(0,200,83,0.3)">All passed</span>
+        {% else %}
+          <span style="padding:4px 12px;border-radius:999px;font-size:11px;font-weight:500;background:rgba(220,38,38,0.12);color:var(--high);border:1px solid rgba(220,38,38,0.3)">{{ sem_data.subjects_failed }} subject{{ 's' if sem_data.subjects_failed > 1 else '' }} failed</span>
+        {% endif %}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:rgba(17,24,39,0.04)">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Subject</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Absences<br><span style="font-size:9px;font-weight:400">/14 max 5</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Attendance<br><span style="font-size:9px;font-weight:400">min 64.3%</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Quiz<br><span style="font-size:9px;font-weight:400">/20</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Assignment<br><span style="font-size:9px;font-weight:400">/40</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Carry<br><span style="font-size:9px;font-weight:400">/60 · 60%</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Final<br><span style="font-size:9px;font-weight:400">/40 · 40%</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Total<br><span style="font-size:9px;font-weight:400">/100</span></th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Grade</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">GPA Pt</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subj in sem_data.subjects %}
+          <tr style="border-bottom:1px solid var(--border);{% if subj.barred == 'Yes' %}background:rgba(220,38,38,0.06);{% endif %}">
+            <td style="padding:9px 10px;font-weight:600;color:var(--ink)">{{ subj.name }}</td>
+            {# Absences cell — red if barred #}
+            <td style="padding:9px 10px;text-align:center">
+              {% if subj.barred == 'Yes' %}
+                <span style="display:inline-flex;align-items:center;gap:4px;color:var(--high);font-weight:700">
+                  {{ subj.absences }}/14 <span style="font-size:9px;padding:1px 5px;background:rgba(220,38,38,0.15);border-radius:3px;border:1px solid rgba(220,38,38,0.3)">BARRED</span>
+                </span>
+              {% else %}
+                <span style="color:{% if subj.absences <= 2 %}var(--low){% elif subj.absences <= 4 %}var(--med){% else %}var(--high){% endif %}">{{ subj.absences }}/14</span>
+              {% endif %}
+            </td>
+            {# Attendance cell #}
+            <td style="padding:9px 10px;text-align:center;color:{% if subj.attendance >= 80 %}var(--low){% elif subj.attendance >= 64.3 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.attendance }}%</td>
+            <td style="padding:9px 10px;text-align:center;color:{% if subj.quiz >= 12 %}var(--low){% elif subj.quiz >= 8 %}var(--med){% else %}var(--high){% endif %}">{{ subj.quiz }}</td>
+            <td style="padding:9px 10px;text-align:center;color:{% if subj.assignment >= 24 %}var(--low){% elif subj.assignment >= 16 %}var(--med){% else %}var(--high){% endif %}">{{ subj.assignment }}</td>
+            <td style="padding:9px 10px;text-align:center">
+              <span style="color:{% if subj.carry >= 36 %}var(--low){% elif subj.carry >= 24 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.carry }}</span>
+              <span style="font-size:10px;color:var(--muted)"> ({{ (subj.carry/60*100)|round(0)|int }}%)</span>
+            </td>
+            <td style="padding:9px 10px;text-align:center">
+              {% if subj.barred == 'Yes' %}
+                <span style="color:var(--high);font-weight:700">0.0 <span style="font-size:9px;color:var(--muted)">(barred)</span></span>
+              {% else %}
+                <span style="color:{% if subj.final >= 24 %}var(--low){% elif subj.final >= 16 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.final }}</span>
+                <span style="font-size:10px;color:var(--muted)"> ({{ (subj.final/40*100)|round(0)|int }}%)</span>
+              {% endif %}
+            </td>
+            <td style="padding:9px 10px;text-align:center;font-weight:500;color:{% if subj.total >= 65 %}var(--low){% elif subj.total >= 50 %}var(--med){% else %}var(--high){% endif %}">{{ subj.total }}</td>
+            <td style="padding:9px 10px;text-align:center">
+              <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;
+                color:{% if subj.grade in ['A','A-'] %}#00C853
+                {% elif subj.grade in ['B+','B'] %}var(--accent)
+                {% elif subj.grade == 'B-' %}#4FC3F7
+                {% elif subj.grade in ['C+','C'] %}var(--med)
+                {% elif subj.grade in ['D','D-'] %}#FF7043
+                {% else %}var(--high){% endif %}">{{ subj.grade }}</span>
+            </td>
+            <td style="padding:9px 10px;text-align:center">
+              <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;
+                color:{% if subj.point >= 3.67 %}#00C853
+                {% elif subj.point >= 3.00 %}var(--accent)
+                {% elif subj.point >= 2.00 %}var(--med)
+                {% else %}var(--high){% endif %}">{{ subj.point }}</span>
+            </td>
+            <td style="padding:9px 10px;text-align:center">
+              {% if subj.status == 'Pass' %}
+                <span style="padding:3px 9px;border-radius:999px;font-size:10px;font-weight:500;background:rgba(0,200,83,0.12);color:var(--low);border:1px solid rgba(0,200,83,0.3)">✓ Pass</span>
+              {% else %}
+                <span style="padding:3px 9px;border-radius:999px;font-size:10px;font-weight:500;background:rgba(220,38,38,0.12);color:var(--high);border:1px solid rgba(220,38,38,0.3)">✗ Fail{% if subj.barred == 'Yes' %} (Barred){% endif %}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <!-- Semester summary row -->
+          <tr style="background:rgba(0,201,255,0.04);border-top:1px solid rgba(0,201,255,0.15)">
+            <td style="padding:9px 10px;font-size:11px;color:var(--muted)">
+              Total: {{ sem_data.total_absences }}/15 abs · {{ sem_data.attendance_pct }}% att
+              {% if sem_data.barred_count > 0 %}
+                · <span style="color:var(--high);font-weight:500">{{ sem_data.barred_count }} barred</span>
+              {% endif %}
+            </td>
+            <td colspan="5" style="padding:9px 10px;text-align:right;font-size:11px;color:var(--muted)">
+              Semester CGPA = ({{ sem_data.subjects[0].point }} + {{ sem_data.subjects[1].point }} + {{ sem_data.subjects[2].point }}) ÷ 3 =
+            </td>
+            <td colspan="5" style="padding:9px 10px;text-align:center">
+              <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;
+                color:{% if sem_data.cgpa >= 3.50 %}#00C853{% elif sem_data.cgpa >= 3.00 %}var(--accent){% elif sem_data.cgpa >= 2.50 %}var(--med){% else %}var(--high){% endif %}">
+                {{ sem_data.cgpa }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-row">
+    <!-- Profile Info -->
+    <div class="info-card">
+      <div class="info-title">Student Profile</div>
+      <div class="info-grid">
+        <div class="info-row"><span class="info-key">Age</span><span class="info-val">{{ student.age }}</span></div>
+        <div class="info-row"><span class="info-key">Gender</span><span class="info-val">{{ student.gender }}</span></div>
+        <div class="info-row"><span class="info-key">Ethnicity</span><span class="info-val">{{ student.ethnicity }}</span></div>
+        <div class="info-row"><span class="info-key">Parental education</span><span class="info-val">{{ student.education }}</span></div>
+        <div class="info-row"><span class="info-key">Tutoring</span><span class="info-val">{{ student.tutoring }}</span></div>
+        <div class="info-row"><span class="info-key">Study method</span><span class="info-val">{{ student.study_method }}</span></div>
+      </div>
+
+      <div style="margin-top:18px">
+        <div class="info-key" style="margin-bottom:8px">Attendance by semester</div>
+        {% for sem, att, abs in [
+          ('Sem 1', student.sem1_attendance, student.sem1_absences),
+          ('Sem 2', student.sem2_attendance, student.sem2_absences),
+          ('Sem 3', student.sem3_attendance, student.sem3_absences)
+        ] %}
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+            <span style="color:var(--muted)">{{ sem }}</span>
+            <span style="color:{% if att >= 80 %}var(--low){% elif att >= 64.3 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ att }}% · {{ abs }}/15 absences</span>
+          </div>
+          <div class="att-bar-track">
+            <div class="att-bar-fill" style="width:{{ att }}%;background:{% if att >= 80 %}var(--low){% elif att >= 64.3 %}var(--med){% else %}var(--high){% endif %}"></div>
+          </div>
+        </div>
+        {% endfor %}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between">
+          <span>Trend: <span style="font-weight:500;color:{% if student.att_trend > 0 %}var(--low){% elif student.att_trend < -5 %}var(--high){% else %}var(--med){% endif %}">
+            {% if student.att_trend > 0 %}&#8593; +{{ student.att_trend }}%{% else %}&#8595; {{ student.att_trend }}%{% endif %}
+          </span> Sem 1 → Sem 3</span>
+          {% if student.total_barred > 0 %}
+          <span style="color:var(--high);font-weight:500">&#9888; {{ student.total_barred }} barring{{ 's' if student.total_barred > 1 else '' }} total</span>
+          {% endif %}
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;padding:6px 10px;background:var(--white);border-radius:6px;border:1px solid var(--border)">
+          IIUM rule: max 5 absences per subject (14 classes). Exceed = barred from final exam.
+        </div>
+      </div>
+    </div>
+
+    <!-- Activities -->
+    <div class="info-card">
+      <div class="info-title">Activities &amp; Involvement</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        {% for label, val in [
+          ('Extracurricular', student.extracurricular),
+          ('Sports',          student.sports),
+          ('Music',           student.music),
+          ('Volunteering',    student.volunteering)
+        ] %}
+        <div>
+          <div class="info-key" style="margin-bottom:6px">{{ label }}</div>
+          <span class="pill {{ 'yes' if val == 'Yes' else 'no' }}">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="info-key" style="margin-bottom:10px">Risk factor summary</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          {% if student.sem3_attendance < 64.3 %}
+          <div style="font-size:12px;color:var(--high);display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;background:var(--high);border-radius:50%;flex-shrink:0;display:inline-block"></span>
+            Low Sem 3 attendance ({{ student.sem3_attendance }}%) — below IIUM 64.3% threshold
+          </div>
+          {% endif %}
+          {% if student.total_barred > 0 %}
+          <div style="font-size:12px;color:var(--high);display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;background:var(--high);border-radius:50%;flex-shrink:0;display:inline-block"></span>
+            Barred from finals in {{ student.total_barred }} subject{{ 's' if student.total_barred > 1 else '' }} (> 5 absences)
+          </div>
+          {% endif %}
+          {% if student.att_trend < -10 %}
+          <div style="font-size:12px;color:var(--high);display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;background:var(--high);border-radius:50%;flex-shrink:0;display:inline-block"></span>
+            Attendance declining ({{ student.att_trend }}% drop Sem 1→3)
+          </div>
+          {% endif %}
+          {% if student.avg_cgpa < 2.5 %}
+          <div style="font-size:12px;color:var(--high);display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;background:var(--high);border-radius:50%;flex-shrink:0;display:inline-block"></span>
+            Below minimum CGPA threshold ({{ student.avg_cgpa }})
+          </div>
+          {% endif %}
+          {% if student.sem3_attendance >= 64.3 and student.avg_cgpa >= 2.5 and student.total_barred == 0 and student.att_trend >= -10 %}
+          <div style="font-size:12px;color:var(--low);display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;background:var(--low);border-radius:50%;flex-shrink:0;display:inline-block"></span>
+            No critical risk factors detected
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const cgpaTrend  = {{ student.cgpa_trend  | tojson }};
+const assessment = {{ student.assessment  | tojson }};
+
+const gridCol = 'rgba(17,24,39,0.08)';
+const tickCol = 'rgba(17,24,39,0.62)';
+
+/* ── CGPA Line Chart ── */
+new Chart(document.getElementById('cgpaChart'), {
+  type: 'line',
+  data: {
+    labels: cgpaTrend.map(d => d.sem),
+    datasets: [{
+      data: cgpaTrend.map(d => d.cgpa),
+      borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.08)',
+      borderWidth: 2.5, pointBackgroundColor: '#2563EB',
+      pointRadius: 6, pointHoverRadius: 9, tension: 0.4, fill: true
+    }, {
+      data: [2.75, 2.75, 2.75],
+      borderColor: 'rgba(255,77,77,0.5)', borderWidth: 1.5,
+      borderDash: [6,4], pointRadius: 0, fill: false, label: 'Min CGPA'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#FFFFFF', borderColor: '#E5E7EB',
+        borderWidth: 1, titleColor: '#111827', bodyColor: '#374151',
+        callbacks: { label: ctx => ctx.datasetIndex===0 ? ` CGPA: ${ctx.parsed.y.toFixed(2)}` : ' Min. CGPA (2.75)' }
+      }
+    },
+    scales: {
+      y: { min:2.0, max:4.0, ticks:{color:tickCol,font:{size:11},callback:v=>v.toFixed(1)},
+           grid:{color:gridCol}, border:{display:false} },
+      x: { ticks:{color:tickCol,font:{size:12,weight:'500'}},
+           grid:{display:false}, border:{display:false} }
+    }
+  }
+});
+
+/* ── Carry vs Final Marks Grouped Bar Chart ── */
+const sems = ['Sem1','Sem2','Sem3'];
+new Chart(document.getElementById('marksChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Semester 1','Semester 2','Semester 3'],
+    datasets: [
+      {
+        label: 'Carry Marks (/180)',
+        data: sems.map(s => assessment[s].total_carry),
+        backgroundColor: 'rgba(37,99,235,0.72)',
+        borderRadius: 4, borderSkipped: false
+      },
+      {
+        label: 'Final Exam (/120)',
+        data: sems.map(s => assessment[s].total_final),
+        backgroundColor: 'rgba(21,101,192,0.7)',
+        borderRadius: 4, borderSkipped: false
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: tickCol, font: { size: 11 }, boxWidth: 12 } },
+      tooltip: {
+        backgroundColor: '#FFFFFF', borderColor: '#E5E7EB',
+        borderWidth: 1, titleColor: '#111827', bodyColor: '#374151'
+      }
+    },
+    scales: {
+      y: { min:0, max:300, ticks:{color:tickCol,font:{size:11}},
+           grid:{color:gridCol}, border:{display:false} },
+      x: { ticks:{color:tickCol,font:{size:11}},
+           grid:{display:false}, border:{display:false} }
+    }
+  }
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EduPredict AI Chat Widget
+     ═══════════════════════════════════════════════════════════════ -->
+<style>
+  #ep-chat-panel {
+    display:none; position:fixed; bottom:88px; right:24px; z-index:1001;
+    width:340px; height:480px; background:var(--white);
+    border:1px solid var(--border); border-radius:16px;
+    flex-direction:column; overflow:hidden;
+    box-shadow:0 12px 36px rgba(17,24,39,0.16);
+  }
+  #ep-chat-panel.open { display:flex; }
+  #ep-chat-msgs {
+    flex:1; overflow-y:auto; padding:12px;
+    display:flex; flex-direction:column; gap:10px;
+    scrollbar-width:thin; scrollbar-color:#CBD5E1 transparent;
+  }
+  .ep-msg { max-width:88%; display:flex; flex-direction:column; gap:3px; }
+  .ep-msg.ai  { align-self:flex-start; }
+  .ep-msg.usr { align-self:flex-end; }
+  .ep-bubble {
+    padding:9px 13px; border-radius:12px;
+    font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word;
+  }
+  .ep-msg.ai  .ep-bubble { background:var(--panel); color:var(--ink); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .ep-msg.usr .ep-bubble { background:#EFF6FF; color:var(--blue); border:1px solid #BFDBFE; border-bottom-right-radius:4px; }
+  .ep-time { font-size:10px; color:var(--dim); }
+  .ep-msg.usr .ep-time { text-align:right; }
+  #ep-chips { display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 8px; }
+  .ep-chip {
+    background:#EFF6FF; border:1px solid #BFDBFE; border-radius:20px;
+    padding:5px 11px; font-size:11.5px; color:var(--blue); cursor:pointer;
+    transition:background 0.15s;
+  }
+  .ep-chip:hover { background:#DBEAFE; }
+  #ep-input-row {
+    padding:10px 12px; border-top:1px solid var(--border);
+    display:flex; gap:8px; align-items:center;
+  }
+  #ep-input {
+    flex:1; background:var(--panel); border:1px solid var(--border);
+    border-radius:20px; padding:8px 14px; font-size:13px;
+    color:var(--ink); outline:none; font-family:inherit;
+  }
+  #ep-input::placeholder { color:var(--dim); }
+  #ep-send {
+    width:34px; height:34px; border-radius:50%; background:var(--blue);
+    border:none; cursor:pointer; font-size:16px; color:#fff;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:transform 0.15s;
+  }
+  #ep-send:hover { transform:scale(1.08); }
+  #ep-fab {
+    position:fixed; bottom:24px; right:24px; z-index:1001;
+    width:52px; height:52px; border-radius:50%; background:var(--blue);
+    border:none; cursor:pointer; font-size:22px;
+    box-shadow:0 0 0 6px rgba(37,99,235,0.14);
+    transition:transform 0.2s; display:flex; align-items:center; justify-content:center;
+  }
+  #ep-fab:hover { transform:scale(1.08); }
+  .ep-typing span {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--dim); margin:0 2px;
+    animation:ep-blink 1.2s infinite;
+  }
+  .ep-typing span:nth-child(2){animation-delay:.2s}
+  .ep-typing span:nth-child(3){animation-delay:.4s}
+  @keyframes ep-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+</style>
+
+<!-- Floating button -->
+<button id="ep-fab" onclick="epToggle()" title="Ask EduPredict AI">💬</button>
+
+<!-- Chat panel -->
+<div id="ep-chat-panel">
+  <!-- Header -->
+  <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;border:1px solid #BFDBFE;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);">EduPredict AI Advisor</div>
+      <div style="font-size:11px;color:var(--low);">● Knows your academic profile</div>
+    </div>
+    <button onclick="epToggle()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:20px;line-height:1;padding:0;">×</button>
+  </div>
+
+  <!-- Messages -->
+  <div id="ep-chat-msgs"></div>
+
+  <!-- Suggestion chips -->
+  <div id="ep-chips">
+    <div class="ep-chip" onclick="epSuggest('How can I improve my CGPA?')">Improve CGPA</div>
+    <div class="ep-chip" onclick="epSuggest('Am I at risk of being barred next semester?')">Barring risk</div>
+    <div class="ep-chip" onclick="epSuggest('What final exam score do I need to pass all subjects?')">Finals target</div>
+    <div class="ep-chip" onclick="epSuggest('Give me a study plan for next semester')">Study plan</div>
+  </div>
+
+  <!-- Input -->
+  <div id="ep-input-row">
+    <input id="ep-input" type="text" placeholder="Ask anything about your results…"
+           onkeydown="if(event.key==='Enter')epSend()" />
+    <button id="ep-send" onclick="epSend()" title="Send">➤</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const STUDENT_ID = "{{ student.id }}";
+  let history = [];
+  let opened = false;
+  let loading = false;
+
+  window.epToggle = function() {
+    const panel = document.getElementById('ep-chat-panel');
+    const fab   = document.getElementById('ep-fab');
+    opened = !opened;
+    panel.classList.toggle('open', opened);
+    fab.style.display = opened ? 'none' : 'flex';
+    if (opened && history.length === 0) {
+      epAppend('ai', "Hi! I'm your EduPredict AI Advisor 👋\n\nI can see your full academic record — grades, attendance, and risk status. Ask me anything, like what score you need to pass, why you're at risk, or how to improve your CGPA.");
+    }
+    if (opened) setTimeout(() => document.getElementById('ep-input').focus(), 100);
+  };
+
+  window.epSuggest = function(text) {
+    document.getElementById('ep-input').value = text;
+    epSend();
+  };
+
+  window.epSend = async function() {
+    if (loading) return;
+    const input = document.getElementById('ep-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    document.getElementById('ep-chips').style.display = 'none';
+
+    epAppend('usr', msg);
+    history.push({ role: 'user', content: msg });
+
+    loading = true;
+    const typingId = 'ep-typing-' + Date.now();
+    const typingEl = document.createElement('div');
+    typingEl.className = 'ep-msg ai';
+    typingEl.id = typingId;
+    typingEl.innerHTML = '<div class="ep-bubble ep-typing"><span></span><span></span><span></span></div>';
+    document.getElementById('ep-chat-msgs').appendChild(typingEl);
+    epScroll();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: STUDENT_ID,
+          message: msg,
+          history: history.slice(0, -1).slice(-10)
+        })
+      });
+      const data = await res.json();
+      document.getElementById(typingId)?.remove();
+      const reply = data.reply || data.error || 'Sorry, something went wrong. Please try again.';
+      epAppend('ai', reply);
+      history.push({ role: 'assistant', content: reply });
+    } catch (e) {
+      document.getElementById(typingId)?.remove();
+      epAppend('ai', 'Connection error. Please check your internet and try again.');
+    } finally {
+      loading = false;
+    }
+  };
+
+  function epAppend(role, text) {
+    const msgs = document.getElementById('ep-chat-msgs');
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const div = document.createElement('div');
+    div.className = 'ep-msg ' + role;
+    div.innerHTML = '<div class="ep-bubble">' + escHtml(text) + '</div><div class="ep-time">' + (role==='ai'?'EduPredict AI':'You') + ' &middot; ' + now + '</div>';
+    msgs.appendChild(div);
+    epScroll();
+  }
+
+  function epScroll() {
+    const msgs = document.getElementById('ep-chat-msgs');
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function escHtml(str) {
+    return str
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g,'<em>$1</em>')
+      .replace(/\n/g,'<br>');
+  }
+})();
+</script>
+
+</body>
+</html>

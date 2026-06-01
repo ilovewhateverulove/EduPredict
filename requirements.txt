@@ -1,0 +1,13 @@
+Flask
+Flask-SQLAlchemy
+Flask-Bcrypt
+python-dotenv
+pandas
+openpyxl
+scikit-learn
+xgboost
+joblib
+matplotlib
+google-generativeai
+weasyprint
+gunicorn
