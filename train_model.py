@@ -274,7 +274,7 @@ joblib.dump(FEATURES, os.path.join(MODEL_DIR, 'features.pkl'))
 print('      ✓ model.pkl + features.pkl → model/')
 
 # Feature importance chart
-top_fi  = fi.tail(15)
+top_fi  = fi.head(15).sort_values()
 fig, ax = plt.subplots(figsize=(10, 6))
 colors  = ['#DC2626' if v >= fi.quantile(0.85) else
            '#D97706' if v >= fi.quantile(0.5)  else '#1565C0' for v in top_fi.values]

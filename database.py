@@ -22,9 +22,8 @@ db     = SQLAlchemy()
 bcrypt = Bcrypt()
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  STUDENTS
-# ══════════════════════════════════════════════════════════════════════════
 class Student(db.Model):
     __tablename__ = "students"
 
@@ -109,9 +108,8 @@ class ClassSection(db.Model):
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ASSESSMENTS  (per subject per semester)
-# ══════════════════════════════════════════════════════════════════════════
 class Assessment(db.Model):
     __tablename__ = "assessments"
 
@@ -138,9 +136,8 @@ class Assessment(db.Model):
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ATTENDANCE  (per subject per semester — IIUM rules)
-# ══════════════════════════════════════════════════════════════════════════
 class AttendanceRecord(db.Model):
     __tablename__ = "attendance_records"
 
@@ -162,45 +159,8 @@ class AttendanceRecord(db.Model):
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  PREDICTIONS  (ML model output — one row per student)
-# ══════════════════════════════════════════════════════════════════════════
-class WellbeingSurvey(db.Model):
-    __tablename__ = "wellbeing_surveys"
-
-    id               = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    student_id       = db.Column(db.String(20), db.ForeignKey("students.student_id",
-                                  ondelete="CASCADE"), nullable=False, index=True)
-    stress_level     = db.Column(db.Integer, nullable=False)  # 1-5
-    sleep_hours      = db.Column(db.Float, nullable=False)
-    financial_stress = db.Column(db.Integer, nullable=False)  # 1-5
-    notes            = db.Column(db.Text)
-    created_at       = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
-    student = db.relationship("Student")
-
-
-class WeeklyAttendance(db.Model):
-    __tablename__ = "weekly_attendance"
-
-    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    student_id  = db.Column(db.String(20), db.ForeignKey("students.student_id",
-                            ondelete="CASCADE"), nullable=False, index=True)
-    subject     = db.Column(db.String(20), nullable=False)
-    week_number = db.Column(db.Integer, nullable=False)
-    attended    = db.Column(db.Boolean, nullable=False, default=True)
-    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at  = db.Column(db.DateTime, default=datetime.utcnow,
-                            onupdate=datetime.utcnow)
-
-    student = db.relationship("Student")
-
-    __table_args__ = (
-        db.UniqueConstraint("student_id", "subject", "week_number",
-                            name="uq_weekly_att_student_subj_week"),
-    )
-
-
 class Prediction(db.Model):
     __tablename__ = "predictions"
 
@@ -236,9 +196,8 @@ class Prediction(db.Model):
     student = db.relationship("Student", back_populates="prediction")
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  LIVE PREDICTIONS  (web form submissions)
-# ══════════════════════════════════════════════════════════════════════════
 class LivePrediction(db.Model):
     __tablename__ = "live_predictions"
 
@@ -278,9 +237,8 @@ class LivePrediction(db.Model):
         return d
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ADMIN USERS  (hashed passwords)
-# ══════════════════════════════════════════════════════════════════════════
 class RiskNotification(db.Model):
     __tablename__ = "risk_notifications"
 

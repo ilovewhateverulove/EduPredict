@@ -15,11 +15,11 @@ from functools import wraps
 from dotenv    import load_dotenv
 from database  import (db, bcrypt, Student, Prediction, LivePrediction,
                        AdminUser, Assessment, AttendanceRecord,
-                       WellbeingSurvey, WeeklyAttendance, Lecturer,
-                       ClassSection, RiskNotification)
+                       Lecturer, ClassSection, RiskNotification)
 import joblib
 import pandas  as pd
 import os
+import secrets
 from datetime  import datetime
 from werkzeug.utils import secure_filename
 from sqlalchemy import inspect, true, false
@@ -42,19 +42,19 @@ if GEMINI_API_KEY:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         GEMINI_ENABLED = True
-        print(f"  ✓ Gemini AI configured (model: {GEMINI_MODEL}, key: ...{GEMINI_API_KEY[-6:]})")
+        print(f"  [OK] Gemini AI configured (model: {GEMINI_MODEL}, key: ...{GEMINI_API_KEY[-6:]})")
     except Exception as e:
         genai = None
         GEMINI_ENABLED = False
-        print(f"  ⚠ Gemini import failed: {e}")
+        print(f"  [WARN] Gemini import failed: {e}")
 else:
     genai = None
     GEMINI_ENABLED = False
-    print("  ⚠ GEMINI_API_KEY not found in .env — AI chat disabled.")
+    print("  [WARN] GEMINI_API_KEY not found in .env - AI chat disabled.")
 
 app = Flask(__name__)
 
-#  Config 
+#  Config
 app.secret_key = os.environ.get("SECRET_KEY", "edupredict-2025-s3cr3t-k3y-do-not-share")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL", "sqlite:///edupredict.db")
@@ -66,6 +66,8 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "edupredict123")
+# Shared by all students for the FYP demo. Student login stays off if this is unset.
+DEMO_STUDENT_PASSWORD = os.environ.get("DEMO_STUDENT_PASSWORD", "").strip()
 
 db.init_app(app)
 bcrypt.init_app(app)
@@ -273,9 +275,8 @@ def manual_prediction_factors(raw: dict, risk_prob: float) -> list[dict]:
     return factors[:6]
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  DB INIT
-# ══════════════════════════════════════════════════════════════════════════
 def init_db():
     with app.app_context():
         db.create_all()
@@ -291,9 +292,8 @@ def init_db():
         db.session.commit()
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  HELPERS
-# ══════════════════════════════════════════════════════════════════════════
 def get_risk_level(prob: float) -> str:
     if prob >= 0.70:   return "High Risk"
     elif prob >= 0.40: return "Medium Risk"
@@ -613,82 +613,6 @@ def maybe_notify_risk_change(student: Student, pred: Prediction, new_risk_level:
 SUBJECTS = ["Math", "Science", "English"]
 
 
-def consecutive_absences(records) -> int:
-    """Longest run of missed weekly attendance records."""
-    longest = current = 0
-    for rec in sorted(records, key=lambda r: r.week_number):
-        if rec.attended:
-            current = 0
-        else:
-            current += 1
-            longest = max(longest, current)
-    return longest
-
-
-def weekly_attendance_summary(student_id: str) -> dict:
-    rows = WeeklyAttendance.query.filter_by(student_id=student_id).order_by(
-        WeeklyAttendance.subject, WeeklyAttendance.week_number).all()
-    by_subject = {}
-    for subj in SUBJECTS:
-        recs = [r for r in rows if r.subject == subj]
-        absences = sum(1 for r in recs if not r.attended)
-        streak = consecutive_absences(recs)
-        by_subject[subj] = {
-            "subject": subj,
-            "weeks_recorded": len(recs),
-            "absences": absences,
-            "consecutive_absences": streak,
-            "approaching_barring": absences >= 4,
-            "immediate_warning": streak >= 3,
-        }
-    return {
-        "subjects": list(by_subject.values()),
-        "has_warning": any(v["immediate_warning"] or v["approaching_barring"]
-                           for v in by_subject.values()),
-    }
-
-
-def latest_wellbeing(student_id: str):
-    return WellbeingSurvey.query.filter_by(student_id=student_id).order_by(
-        WellbeingSurvey.created_at.desc()).first()
-
-
-def wellbeing_risk_flags(survey):
-    if not survey:
-        return []
-    flags = []
-    if survey.stress_level >= 4:
-        flags.append("High stress level")
-    if survey.sleep_hours < 6:
-        flags.append("Low sleep hours")
-    if survey.financial_stress >= 4:
-        flags.append("Financial stress")
-    return flags
-
-
-def barring_alerts():
-    alerts = []
-    rows = WeeklyAttendance.query.order_by(
-        WeeklyAttendance.student_id, WeeklyAttendance.subject,
-        WeeklyAttendance.week_number).all()
-    grouped = {}
-    for row in rows:
-        grouped.setdefault((row.student_id, row.subject), []).append(row)
-    for (student_id, subject), recs in grouped.items():
-        absences = sum(1 for r in recs if not r.attended)
-        streak = consecutive_absences(recs)
-        if absences >= 4 or streak >= 3:
-            alerts.append({
-                "student_id": student_id,
-                "subject": subject,
-                "absences": absences,
-                "consecutive_absences": streak,
-                "reason": "3 consecutive absences" if streak >= 3 else "4 absences recorded",
-            })
-    return sorted(alerts, key=lambda a: (a["absences"], a["consecutive_absences"]),
-                  reverse=True)
-
-
 def build_dashboard_stats(student_q, pred_q):
     total   = student_q.count()
     at_risk = pred_q.filter(Prediction.prediction_label == "At-Risk").count()
@@ -776,9 +700,6 @@ def build_student_dict(student: Student, pred: Prediction) -> dict:
         sem_data[sem]["total_final"] = round(float(sem_data[sem]["total_final"]), 1)
         sem_data[sem]["total_marks"] = round(float(sem_data[sem]["total_marks"]), 1)
 
-    wellbeing = latest_wellbeing(student.student_id)
-    weekly_summary = weekly_attendance_summary(student.student_id)
-
     return {
         "id":              student.student_id,
         "age":             student.age or 0,
@@ -807,16 +728,6 @@ def build_student_dict(student: Student, pred: Prediction) -> dict:
         "prediction":      pred.prediction_label,
         "risk_prob":       round(float(pred.risk_probability) * 100, 1),
         "risk_level":      pred.risk_level,
-        "wellbeing": {
-            "submitted": bool(wellbeing),
-            "stress_level": wellbeing.stress_level if wellbeing else None,
-            "sleep_hours": round(float(wellbeing.sleep_hours), 1) if wellbeing else None,
-            "financial_stress": wellbeing.financial_stress if wellbeing else None,
-            "notes": wellbeing.notes if wellbeing else "",
-            "created_at": wellbeing.created_at.strftime("%Y-%m-%d %H:%M") if wellbeing else "",
-            "flags": wellbeing_risk_flags(wellbeing),
-        },
-        "weekly_attendance": weekly_summary,
         "assessment":      sem_data,
         "cgpa_trend": [
             {"sem": "Sem 1", "cgpa": round(float(pred.sem1_cgpa or 0), 2)},
@@ -826,9 +737,8 @@ def build_student_dict(student: Student, pred: Prediction) -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  AUTH DECORATOR
-# ══════════════════════════════════════════════════════════════════════════
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -863,9 +773,8 @@ def lecturer_required(f):
     return decorated
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  AUTH ROUTES
-# ══════════════════════════════════════════════════════════════════════════
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     # Students cannot access admin login at all
@@ -934,9 +843,8 @@ def student_logout():
     return redirect(url_for("home"))
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  STUDENT ROUTES
-# ══════════════════════════════════════════════════════════════════════════
 @app.route("/", methods=["GET", "POST"])
 def home():
     session.pop("student_id", None)
@@ -948,12 +856,16 @@ def home():
     error = None
     if request.method == "POST":
         student_id = request.form.get("student_id", "").strip()
-        if not student_id:
-            error = "Please enter your Student ID."
+        password = request.form.get("password", "")
+        if not DEMO_STUDENT_PASSWORD:
+            error = "Student login is not configured. Please contact the administrator."
+        elif not student_id or not password:
+            error = "Please enter your Student ID and password."
         else:
             student = Student.query.filter_by(student_id=student_id).first()
-            if not student:
-                error = f'Student ID "{student_id}" not found. Please check and try again.'
+            password_ok = secrets.compare_digest(password.encode(), DEMO_STUDENT_PASSWORD.encode())
+            if not student or not password_ok:
+                error = "Incorrect Student ID or password. Please check and try again."
             else:
                 session["student_id"] = student_id
                 return redirect(url_for("dashboard", student_id=student_id))
@@ -981,37 +893,6 @@ def dashboard(student_id):
     return render_template("dashboard.html", student=build_student_dict(student, pred))
 
 
-@app.route("/dashboard/<student_id>/wellbeing", methods=["POST"])
-def submit_wellbeing(student_id):
-    student_id = str(student_id).strip()
-    if session.get("student_id") and session["student_id"] != student_id:
-        return redirect(url_for("home"))
-    if not session.get("student_id") and not session.get("admin_logged_in"):
-        return redirect(url_for("home"))
-    if not Student.query.filter_by(student_id=student_id).first():
-        return redirect(url_for("home"))
-
-    try:
-        stress = int(request.form.get("stress_level", 0))
-        sleep = float(request.form.get("sleep_hours", 0))
-        financial = int(request.form.get("financial_stress", 0))
-        if stress < 1 or stress > 5 or financial < 1 or financial > 5:
-            raise ValueError("Stress values must be between 1 and 5.")
-        if sleep < 0 or sleep > 24:
-            raise ValueError("Sleep hours must be between 0 and 24.")
-        db.session.add(WellbeingSurvey(
-            student_id=student_id,
-            stress_level=stress,
-            sleep_hours=sleep,
-            financial_stress=financial,
-            notes=request.form.get("notes", "").strip()[:500],
-        ))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-    return redirect(url_for("dashboard", student_id=student_id))
-
-
 def report_recommendations(student_payload):
     recs = []
     if student_payload["risk_level"] == "High Risk":
@@ -1020,11 +901,7 @@ def report_recommendations(student_payload):
         recs.append("Create a subject recovery plan focused on the lowest grade-point subjects.")
     if student_payload["sem3_attendance"] < 64.3 or student_payload["total_barred"] > 0:
         recs.append("Review attendance immediately to avoid further barring from final exams.")
-    if student_payload["weekly_attendance"]["has_warning"]:
-        recs.append("Follow up on weekly attendance because a mid-semester warning has been triggered.")
-    if student_payload["wellbeing"]["flags"]:
-        recs.append("Consider wellbeing support: " + ", ".join(student_payload["wellbeing"]["flags"]) + ".")
-    return recs or ["Maintain current study habits and continue monitoring attendance weekly."]
+    return recs or ["Maintain current study habits and continue monitoring academic performance."]
 
 
 def escape_pdf_text(text) -> str:
@@ -1040,24 +917,8 @@ def simple_pdf_report(student_payload, recommendations) -> bytes:
         f"Average CGPA: {student_payload['avg_cgpa']}",
         f"Overall attendance: {student_payload['overall_att']}%",
         "",
-        "Wellbeing",
+        "Recommendations",
     ]
-    if student_payload["wellbeing"]["submitted"]:
-        lines.extend([
-            f"Stress level: {student_payload['wellbeing']['stress_level']}/5",
-            f"Sleep hours: {student_payload['wellbeing']['sleep_hours']}",
-            f"Financial stress: {student_payload['wellbeing']['financial_stress']}/5",
-            "Flags: " + (", ".join(student_payload["wellbeing"]["flags"]) or "None"),
-        ])
-    else:
-        lines.append("No wellbeing survey submitted.")
-    lines.extend(["", "Weekly Attendance"])
-    for item in student_payload["weekly_attendance"]["subjects"]:
-        lines.append(
-            f"{item['subject']}: {item['absences']} absences, "
-            f"{item['consecutive_absences']} consecutive"
-        )
-    lines.extend(["", "Recommendations"])
     lines.extend([f"- {rec}" for rec in recommendations])
 
     content = ["BT", "/F1 12 Tf", "50 790 Td", "16 TL"]
@@ -1124,9 +985,8 @@ def download_pdf(student_id):
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  AI CHAT — Gemini-powered advisor
-# ══════════════════════════════════════════════════════════════════════════
 @app.route("/api/chat", methods=["POST"])
 def chat():
     # Auth: must be a logged-in student OR admin
@@ -1246,9 +1106,8 @@ YOUR BEHAVIOUR:
         return jsonify({"error": f"AI error: {err}"}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ADMIN DASHBOARD
-# ══════════════════════════════════════════════════════════════════════════
 @app.route("/admin")
 @admin_required
 def admin():
@@ -1276,9 +1135,8 @@ def lecturer_dashboard():
                            logout_url=url_for("lecturer_logout"))
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ADMIN — ADD / DELETE STUDENT
-# ══════════════════════════════════════════════════════════════════════════
 def _clean_text(data, key, default=""):
     value = data.get(key)
     if value is None or value == "":
@@ -1796,49 +1654,8 @@ def api_delete_student(student_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  JSON API — admin dashboard charts
-# ══════════════════════════════════════════════════════════════════════════
-@app.route("/api/weekly-attendance", methods=["POST"])
-@login_required
-def api_weekly_attendance():
-    try:
-        data = request.get_json() or {}
-        student_id = str(data.get("student_id", "")).strip()
-        subject = str(data.get("subject", "")).strip()
-        week_number = int(data.get("week_number", 0))
-        attended = bool(data.get("attended", True))
-        if subject not in SUBJECTS:
-            return jsonify({"success": False, "error": "Subject must be Math, Science, or English."}), 400
-        if week_number < 1 or week_number > 14:
-            return jsonify({"success": False, "error": "Week number must be between 1 and 14."}), 400
-        student = Student.query.filter_by(student_id=student_id).first()
-        if not student:
-            return jsonify({"success": False, "error": "Student not found."}), 404
-        if not staff_can_access_student(student):
-            return jsonify({"success": False, "error": "Not allowed for this student."}), 403
-        rec = WeeklyAttendance.query.filter_by(
-            student_id=student_id, subject=subject, week_number=week_number).first()
-        if not rec:
-            rec = WeeklyAttendance(student_id=student_id, subject=subject,
-                                   week_number=week_number, attended=attended)
-            db.session.add(rec)
-        else:
-            rec.attended = attended
-        db.session.commit()
-        return jsonify({"success": True, "summary": weekly_attendance_summary(student_id)})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/barring-alerts")
-@login_required
-def api_barring_alerts():
-    alerts = barring_alerts()
-    return jsonify({"count": len(alerts), "alerts": alerts[:20]})
-
-
 @app.route("/api/risk-split")
 @login_required
 def api_risk_split():
@@ -2024,9 +1841,8 @@ def api_live_stats():
     })
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  PREDICT — log to live_predictions table
-# ══════════════════════════════════════════════════════════════════════════
 @app.route("/predict", methods=["GET", "POST"])
 @login_required
 def predict():
@@ -2126,9 +1942,8 @@ def predict():
                                xgboost_available=XGBOOST_AVAILABLE)
 
 
-# ══════════════════════════════════════════════════════════════════════════
+
 #  ENTRY POINT
-# ══════════════════════════════════════════════════════════════════════════
 if os.environ.get("AUTO_INIT_DB", "true").lower() == "true":
     try:
         init_db()
