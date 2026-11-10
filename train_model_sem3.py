@@ -191,12 +191,17 @@ FEATURES = [
 X = df[FEATURES]
 y = df['at_risk']
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
+# 70% train / 15% validation / 15% test — test is held back until final evaluation
+X_temp, X_test, y_temp, y_test = train_test_split(
+    X, y, test_size=0.15, random_state=42, stratify=y
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_temp, y_temp, test_size=0.15 / 0.85, random_state=42, stratify=y_temp
 )
 print(f'      Input features : {len(FEATURES)}  (Sem 3 only)')
-print(f'      Training rows  : {len(X_train):,}')
-print(f'      Test rows      : {len(X_test):,}')
+print(f'      Training rows  : {len(X_train):,}  (70%)')
+print(f'      Validation rows: {len(X_val):,}  (15%)')
+print(f'      Test rows      : {len(X_test):,}  (15%)')
 print()
 print('  NOTE: All features are from Semester 3 only.')
 print('  This model is designed for real-time Sem 4 prediction')
@@ -207,22 +212,33 @@ print('  using only the most recent semester data available.')
 print('\n[5/6] Training XGBoost (Sem 3 only) model...')
 
 model = XGBClassifier(
-    n_estimators     = 350,
-    max_depth        = 4,
-    learning_rate    = 0.05,
-    subsample        = 0.9,
-    colsample_bytree = 0.9,
-    eval_metric      = 'logloss',
-    random_state     = 42,
-    n_jobs           = -1
+    n_estimators          = 1000,
+    max_depth             = 4,
+    learning_rate         = 0.05,
+    subsample             = 0.9,
+    colsample_bytree      = 0.9,
+    eval_metric           = 'logloss',
+    early_stopping_rounds = 50,
+    random_state          = 42,
+    n_jobs                = -1
 )
-model.fit(X_train, y_train)
-print('      Training complete.')
+# Stops adding trees once validation logloss has not improved for 50 rounds
+model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+best_trees = model.best_iteration + 1
+print(f'      Training complete. Early stopping chose {best_trees} trees')
 
+val_pred  = model.predict(X_val)
+val_acc   = accuracy_score(y_val, val_pred)
+val_f1    = f1_score(y_val, val_pred)
+val_auc   = roc_auc_score(y_val, model.predict_proba(X_val)[:, 1])
+
+# Cross-validation on train + validation only, so test rows never influence it
+cv_model = XGBClassifier(**{**model.get_params(),
+                            'n_estimators': best_trees, 'early_stopping_rounds': None})
 cv     = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-cv_acc = cross_val_score(model, X, y, cv=cv, scoring='accuracy', n_jobs=-1)
-cv_f1  = cross_val_score(model, X, y, cv=cv, scoring='f1',       n_jobs=-1)
-cv_auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc',  n_jobs=-1)
+cv_acc = cross_val_score(cv_model, X_temp, y_temp, cv=cv, scoring='accuracy', n_jobs=-1)
+cv_f1  = cross_val_score(cv_model, X_temp, y_temp, cv=cv, scoring='f1',       n_jobs=-1)
+cv_auc = cross_val_score(cv_model, X_temp, y_temp, cv=cv, scoring='roc_auc',  n_jobs=-1)
 
 y_pred  = model.predict(X_test)
 y_proba = model.predict_proba(X_test)[:, 1]
@@ -234,11 +250,15 @@ cm      = confusion_matrix(y_test, y_pred)
 print('\n' + '=' * 64)
 print('  MODEL EVALUATION — Sem 3 Only')
 print('=' * 64)
-print(f'\n  Test set (holdout 20%):')
+print(f'\n  Validation set (15%, used for early stopping):')
+print(f'    Accuracy  : {val_acc:.4f}  ({val_acc*100:.2f}%)')
+print(f'    F1 Score  : {val_f1:.4f}')
+print(f'    ROC-AUC   : {val_auc:.4f}')
+print(f'\n  Test set (holdout 15%, final result):')
 print(f'    Accuracy  : {acc:.4f}  ({acc*100:.2f}%)')
 print(f'    F1 Score  : {f1:.4f}')
 print(f'    ROC-AUC   : {auc:.4f}')
-print(f'\n  5-Fold Cross-Validation:')
+print(f'\n  5-Fold Cross-Validation (train + validation, test excluded):')
 print(f'    Accuracy  : {cv_acc.mean():.4f} ± {cv_acc.std():.4f}')
 print(f'    F1 Score  : {cv_f1.mean():.4f} ± {cv_f1.std():.4f}')
 print(f'    ROC-AUC   : {cv_auc.mean():.4f} ± {cv_auc.std():.4f}')
