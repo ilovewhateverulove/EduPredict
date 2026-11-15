@@ -15,12 +15,16 @@ from functools import wraps
 from dotenv    import load_dotenv
 from database  import (db, bcrypt, Student, Prediction, LivePrediction,
                        AdminUser, Assessment, AttendanceRecord,
-                       Lecturer, ClassSection, RiskNotification)
+                       Lecturer, ClassSection, RiskNotification, Intervention)
 import joblib
 import pandas  as pd
 import os
+import re
 import secrets
-from datetime  import datetime
+import smtplib
+import threading
+from email.message import EmailMessage
+from datetime  import datetime, date
 from werkzeug.utils import secure_filename
 from sqlalchemy import inspect, true, false
 
@@ -69,6 +73,15 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "edupredict123")
 # Shared by all students for the FYP demo. Student login stays off if this is unset.
 DEMO_STUDENT_PASSWORD = os.environ.get("DEMO_STUDENT_PASSWORD", "").strip()
 
+# Outgoing email for risk notifications. Emails are only sent when SMTP_HOST and SMTP_FROM are set.
+SMTP_HOST     = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+SMTP_FROM     = os.environ.get("SMTP_FROM", SMTP_USERNAME).strip()
+SMTP_USE_TLS  = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
+EMAIL_ENABLED = bool(SMTP_HOST and SMTP_FROM)
+
 db.init_app(app)
 bcrypt.init_app(app)
 
@@ -113,6 +126,23 @@ def get_grade_point(total: float) -> float:
 
 TOTAL_CLASSES_SEM = 42   # 3 subjects × 14 classes
 
+# Subject pass rule: at least 50% of the carry marks (30/60) AND at least 50% of the
+# final exam (20/40), and not barred (more than 5 absences). The total out of 100 only
+# sets the grade; missing either 50% mark caps the grade at D.
+CARRY_PASS_MARK = 30
+FINAL_PASS_MARK = 20
+CAPPED_GRADE    = "D"
+CAPPED_POINT    = 1.67     # grade point of a D (45–49) in GRADE_TABLE
+
+
+def subject_outcome(carry: float, final_exam: float, total: float, barred: bool = False):
+    """(grade, grade_point, passed) for one subject. Barred counts as a final exam of 0."""
+    below_half = barred or carry < CARRY_PASS_MARK or final_exam < FINAL_PASS_MARK
+    grade, point = _grade_letter(total), get_grade_point(total)
+    if below_half and point > CAPPED_POINT:
+        grade, point = CAPPED_GRADE, CAPPED_POINT
+    return grade, point, not below_half and not barred
+
 
 def build_predict_features(raw: dict) -> pd.DataFrame:
     """
@@ -153,29 +183,18 @@ def build_predict_features(raw: dict) -> pd.DataFrame:
     total_final = round(math_final + sci_final + eng_final, 1)   # /120
     total_marks = round(math_total + sci_total + eng_total, 1)   # /300
 
-    # Grade points from total marks per subject
-    def gp(total):
-        t = round(float(total))
-        for lo, hi, point in GRADE_TABLE:
-            if lo <= t <= hi: return point
-        return 0.0
-
-    math_gp = gp(math_total)
-    sci_gp  = gp(sci_total)
-    eng_gp  = gp(eng_total)
-
     # Barring: >5 absences per subject = barred from final
     barred_cnt = sum(1 for a in [math_abs, sci_abs, eng_abs] if a > 5)
     near_bar   = sum(1 for a in [math_abs, sci_abs, eng_abs] if a >= 5)
 
-    # Subject failures: fail if carry<24 OR final<16 OR total<50
-    def is_fail(carry, final, total):
-        return carry < 24 or final < 16 or total < 50
-    failed = sum(1 for c, f, t in [
-        (math_carry, math_final, math_total),
-        (sci_carry,  sci_final,  sci_total),
-        (eng_carry,  eng_final,  eng_total),
-    ] if is_fail(c, f, t))
+    # Grade points and pass/fail per subject (see subject_outcome for the rule)
+    (_, math_gp, math_pass), (_, sci_gp, sci_pass), (_, eng_gp, eng_pass) = (
+        subject_outcome(c, f, t, a > 5) for c, f, t, a in [
+            (math_carry, math_final, math_total, math_abs),
+            (sci_carry,  sci_final,  sci_total,  sci_abs),
+            (eng_carry,  eng_final,  eng_total,  eng_abs),
+        ])
+    failed = [math_pass, sci_pass, eng_pass].count(False)
 
     d = {
         "Sem3_AttendancePct":       att3,
@@ -256,20 +275,20 @@ def manual_prediction_factors(raw: dict, risk_prob: float) -> list[dict]:
     for name, carry, final_exam, total, absences in subjects:
         if absences > 5:
             barred.append(f"{name} ({absences:.0f} absences)")
-        if carry < 24:
+        if carry < CARRY_PASS_MARK:
             weak_carry.append(f"{name} ({carry:.1f}/60)")
-        if final_exam < 16:
+        if final_exam < FINAL_PASS_MARK:
             weak_final.append(f"{name} ({final_exam:.1f}/40)")
-        if carry < 24 or final_exam < 16 or total < 50:
+        if not subject_outcome(carry, final_exam, total, absences > 5)[2]:
             failed.append(f"{name} ({total:.1f}/100)")
     if barred:
         factors.append({"level": "High", "text": "Barring risk detected in " + ", ".join(barred) + "."})
     if failed:
-        factors.append({"level": "High", "text": "Predicted weak/failing subject totals: " + ", ".join(failed) + "."})
+        factors.append({"level": "High", "text": "Failing subjects: " + ", ".join(failed) + "."})
     if weak_carry:
-        factors.append({"level": "Medium", "text": "Low carry marks in " + ", ".join(weak_carry) + "."})
+        factors.append({"level": "High", "text": "Carry marks below 50% (30/60) in " + ", ".join(weak_carry) + "; grade capped at D."})
     if weak_final:
-        factors.append({"level": "Medium", "text": "Low final exam marks in " + ", ".join(weak_final) + "."})
+        factors.append({"level": "High", "text": "Final exam below 50% (20/40) in " + ", ".join(weak_final) + "; grade capped at D."})
     if not factors:
         factors.append({"level": "Low", "text": "No major academic or attendance risk factor was detected from the submitted values."})
     return factors[:6]
@@ -280,7 +299,7 @@ def manual_prediction_factors(raw: dict, risk_prob: float) -> list[dict]:
 def init_db():
     with app.app_context():
         db.create_all()
-        ensure_sqlite_columns()
+        ensure_schema_columns()
         if not AdminUser.query.filter_by(username=ADMIN_USERNAME).first():
             admin = AdminUser(username=ADMIN_USERNAME)
             admin.set_password(ADMIN_PASSWORD)
@@ -289,6 +308,7 @@ def init_db():
         ensure_default_section()
         db.session.flush()
         seed_demo_students_from_predictions()
+        backfill_student_contacts()
         db.session.commit()
 
 
@@ -377,7 +397,7 @@ def model_confidence(sem_depth: int) -> dict:
 
 def expected_template_columns(sem_depth=3):
     cols = [
-        "StudentID", "Age", "Gender", "Ethnicity", "ParentalEducation",
+        "StudentID", "FullName", "Email", "Age", "Gender", "Ethnicity", "ParentalEducation",
         "StudyTimeWeekly", "StudyMethod", "Tutoring", "Extracurricular",
         "Sports", "Music", "Volunteering",
     ]
@@ -403,6 +423,10 @@ def ensure_default_section():
         db.session.flush()
     section = ClassSection.query.filter_by(
         lecturer_id=lecturer.id, section_name="Default Section").first()
+    # Only needed as a home for students without a section (e.g. a fresh demo seed);
+    # once assign_sections.py has split them up it stays deleted
+    if not section and Student.query.count() and not Student.query.filter(Student.section_id.is_(None)).first():
+        return
     if not section:
         section = ClassSection(
             lecturer_id=lecturer.id,
@@ -446,6 +470,8 @@ def seed_demo_students_from_predictions():
             student_id=sid,
             section_id=default_section.id if default_section else None,
             registration_status="preloaded",
+            full_name=_seed_val(row, "FullName", None),
+            email=_seed_val(row, "Email", None),
             age=int(_seed_val(row, "Age", 20)),
             gender=_seed_val(row, "Gender", "Male"),
             ethnicity=_seed_val(row, "Ethnicity", "Malay"),
@@ -514,21 +540,79 @@ def seed_demo_students_from_predictions():
     print(f"  Demo seed imported {imported} students from outputs/predictions.csv.")
 
 
-def ensure_sqlite_columns():
-    if not app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+PLACEHOLDER_EMAIL_DOMAIN = "@student.edupredict.test"
+
+
+def backfill_student_contacts():
+    """Copy FullName/Email from predictions.csv onto already-seeded students that have no name yet."""
+    # Placeholder addresses from add_student_contacts.py may be swapped for real ones on a re-run
+    needs_fill = db.or_(Student.full_name.is_(None), Student.email.is_(None),
+                        Student.email.like(f"%{PLACEHOLDER_EMAIL_DOMAIN}"))
+    if not Student.query.filter(needs_fill).first():
         return
-    inspector = inspect(db.engine)
-    existing = {c["name"] for c in inspector.get_columns("students")}
-    additions = {
+    csv_path = os.path.join(BASE_DIR, "outputs", "predictions.csv")
+    if not os.path.isfile(csv_path):
+        return
+    df = pd.read_csv(csv_path)
+    if "FullName" not in df.columns:
+        return
+    rows = {str(r["StudentID"]).strip(): r for _, r in df.iterrows()}
+    used = {e for (e,) in db.session.query(Student.email).filter(Student.email.isnot(None))}
+    filled = 0
+    for student in Student.query.filter(needs_fill).all():
+        row = rows.get(student.student_id)
+        if row is None:
+            continue
+        changed = False
+        if not student.full_name and _seed_val(row, "FullName", None):
+            student.full_name = _seed_val(row, "FullName", None)
+            changed = True
+        email = _seed_val(row, "Email", None)
+        replaceable = not student.email or student.email.endswith(PLACEHOLDER_EMAIL_DOMAIN)
+        if email and replaceable and email != student.email and email not in used:
+            used.discard(student.email)
+            student.email = email
+            used.add(email)
+            changed = True
+        filled += changed
+    if filled:
+        print(f"  Backfilled name/email for {filled} students.")
+
+
+SCHEMA_ADDITIONS = {
+    "students": {
         "section_id": "INTEGER",
+        "full_name": "VARCHAR(100)",
         "email": "VARCHAR(120)",
         "password_hash": "VARCHAR(255)",
         "registration_status": "VARCHAR(20) DEFAULT 'pending'",
-    }
+    },
+    "lecturers": {
+        "is_active": "BOOLEAN DEFAULT TRUE",
+    },
+    "risk_notifications": {
+        # Rows created before email delivery existed were never sent
+        "status": "VARCHAR(20) DEFAULT 'not_sent'",
+        "sent_at": "TIMESTAMP",
+    },
+    "live_predictions": {
+        "lecturer_id": "INTEGER",
+        "section_id": "INTEGER",
+    },
+}
+
+
+def ensure_schema_columns():
+    """Add columns introduced after a table was first created (db.create_all never alters tables)."""
+    inspector = inspect(db.engine)
     with db.engine.begin() as conn:
-        for name, ddl in additions.items():
-            if name not in existing:
-                conn.exec_driver_sql(f"ALTER TABLE students ADD COLUMN {name} {ddl}")
+        for table, additions in SCHEMA_ADDITIONS.items():
+            if not inspector.has_table(table):
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, ddl in additions.items():
+                if name not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
 
 
 def make_section_classifier():
@@ -560,7 +644,8 @@ def prepare_training_frame(df: pd.DataFrame, sem_depth: int):
         y = y_num.fillna(0).astype(int)
     else:
         y = y_raw.astype(str).str.lower().isin(["at-risk", "atrisk", "1", "true", "yes"]).astype(int)
-    blocked = {target_col, "RiskLevel", "RiskProbability", "risk_probability", "student_id", "StudentID", "Student_ID", "id"}
+    blocked = {target_col, "RiskLevel", "RiskProbability", "risk_probability", "student_id", "StudentID", "Student_ID", "id",
+               *NAME_KEYS, *EMAIL_KEYS}
     feature_df = df.drop(columns=[c for c in blocked if c in df.columns], errors="ignore")
     feature_df = feature_df[[c for c in feature_df.columns if f"Sem{sem_depth + 1}" not in str(c)]]
     feature_df = pd.get_dummies(feature_df, dummy_na=True)
@@ -599,6 +684,12 @@ def maybe_notify_risk_change(student: Student, pred: Prediction, new_risk_level:
         f"Your EduPredict risk level changed from {old or 'Unknown'} to {new_risk_level}. "
         "Please review your dashboard and contact your lecturer if you need support."
     )
+    if not student.email:
+        status = "no_email"
+    elif not EMAIL_ENABLED:
+        status = "not_configured"
+    else:
+        status = "pending"
     db.session.add(RiskNotification(
         student_id=student.student_id,
         section_id=student.section_id,
@@ -606,8 +697,49 @@ def maybe_notify_risk_change(student: Student, pred: Prediction, new_risk_level:
         new_risk_level=new_risk_level,
         recipient=student.email,
         message=msg,
-        sent=bool(student.email),
+        sent=False,
+        status=status,
     ))
+
+
+def send_email(to: str, subject: str, body: str):
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM
+    msg["To"] = to
+    msg.set_content(body)
+    smtp_cls = smtplib.SMTP_SSL if SMTP_PORT == 465 else smtplib.SMTP
+    with smtp_cls(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
+        if SMTP_USE_TLS and SMTP_PORT != 465:
+            smtp.starttls()
+        if SMTP_USERNAME:
+            smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+        smtp.send_message(msg)
+
+
+_email_lock = threading.Lock()
+
+
+def _send_pending_notifications():
+    # The lock stops two background threads from sending the same row twice
+    with _email_lock, app.app_context():
+        rows = RiskNotification.query.filter_by(status="pending").limit(200).all()
+        for row in rows:
+            try:
+                send_email(row.recipient, "EduPredict: your academic risk level has changed", row.message)
+                row.status = "sent"
+                row.sent = True
+                row.sent_at = datetime.utcnow()
+            except Exception as e:
+                row.status = "failed"
+                print(f"  [WARN] Risk email to {row.recipient} failed: {e}")
+            db.session.commit()
+
+
+def dispatch_pending_notifications():
+    """Send queued risk emails in the background so requests are not held up by SMTP."""
+    if EMAIL_ENABLED:
+        threading.Thread(target=_send_pending_notifications, daemon=True).start()
 
 
 SUBJECTS = ["Math", "Science", "English"]
@@ -702,6 +834,7 @@ def build_student_dict(student: Student, pred: Prediction) -> dict:
 
     return {
         "id":              student.student_id,
+        "name":            student.full_name or "",
         "age":             student.age or 0,
         "gender":          student.gender            or "—",
         "ethnicity":       student.ethnicity          or "—",
@@ -749,6 +882,19 @@ def login_required(f):
             return redirect(url_for("admin_login"))
         return f(*args, **kwargs)
     return decorated
+
+
+@app.before_request
+def enforce_active_lecturer():
+    # A lecturer deactivated by the admin is signed out on their next request
+    lecturer_id = current_lecturer_id()
+    if lecturer_id:
+        lecturer = db.session.get(Lecturer, lecturer_id)
+        if not lecturer or not lecturer.is_active:
+            session.clear()
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "error": "Your account has been deactivated."}), 403
+            return redirect(url_for("lecturer_login"))
 
 
 def admin_required(f):
@@ -815,13 +961,16 @@ def lecturer_login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         lecturer = Lecturer.query.filter_by(username=username).first()
-        if lecturer and lecturer.check_password(password):
+        if not lecturer or not lecturer.check_password(password):
+            error = "Invalid lecturer username or password. Please try again."
+        elif not lecturer.is_active:
+            error = "This lecturer account has been deactivated. Please contact the administrator."
+        else:
             session.clear()
             session["lecturer_logged_in"] = True
             session["lecturer_id"] = lecturer.id
             session["lecturer_user"] = username
             return redirect(url_for("lecturer_dashboard"))
-        error = "Invalid lecturer username or password. Please try again."
     return render_template("admin_login.html", error=error, login_role="lecturer")
 
 
@@ -1139,38 +1288,156 @@ def lecturer_dashboard():
 #  ADMIN — ADD / DELETE STUDENT
 def _clean_text(data, key, default=""):
     value = data.get(key)
-    if value is None or value == "":
+    if not _has_value(data, key):   # blank, missing, or NaN from a CSV cell
         return default
     return str(value).strip()
 
 
 def _clean_int(data, key, default=0):
     value = data.get(key)
-    if value is None or value == "":
+    if not _has_value(data, key):   # blank, missing, or NaN from a CSV cell
         return default
     return int(float(value))
 
 
 def _clean_float(data, key, default=0.0):
     value = data.get(key)
-    if value is None or value == "":
+    if not _has_value(data, key):   # blank, missing, or NaN from a CSV cell
         return default
     return float(value)
 
 
+GRADE_LETTERS = ["A", "A-", "B+", "B", "B-", "C+", "C", "D", "D-", "E", "F"]   # one per GRADE_TABLE row
+
+
 def _grade_letter(total):
-    if total >= 80: return "A"
-    if total >= 75: return "A-"
-    if total >= 70: return "B+"
-    if total >= 65: return "B"
-    if total >= 60: return "B-"
-    if total >= 55: return "C+"
-    if total >= 50: return "C"
-    if total >= 45: return "D"
+    t = round(float(total))
+    for (lo, hi, _), letter in zip(GRADE_TABLE, GRADE_LETTERS):
+        if lo <= t <= hi:
+            return letter
     return "F"
 
 
+#  AUTO-CALCULATED ACADEMIC SUMMARY
+# These formulas reproduce the summary columns of Student_Performance_Enhanced.xlsx exactly,
+# so lecturers only enter quiz/assignment/final marks and absences.
+CLASSES_PER_SUBJECT  = 14
+MAX_ABSENCES_ALLOWED = 5      # the 6th absence bars the student from the final exam
+CGPA_FLOOR           = 1.50   # semester CGPAs in the dataset never go below this
+MARK_FIELDS          = ("Quiz", "Assignment", "FinalExam", "Absences")
+
+
+def _has_value(data, key):
+    raw = data.get(key)
+    return raw is not None and not (isinstance(raw, float) and pd.isna(raw)) and str(raw).strip() != ""
+
+
+def _mark(data, key):
+    return float(data[key]) if _has_value(data, key) else 0.0
+
+
+def semesters_with_marks(data):
+    """Semesters for which at least one mark or absence count was entered."""
+    return [sem for sem in (1, 2, 3)
+            if any(_has_value(data, f"Sem{sem}_{subj}_{f}") for subj in SUBJECTS for f in MARK_FIELDS)]
+
+
+def derive_academic_summary(data) -> dict:
+    """Subject results plus semester and overall summaries, worked out from raw marks and absences."""
+    sems = semesters_with_marks(data)
+    subjects, summary = {}, {}
+    for sem in sems:
+        points, sem_absences, sem_failed, sem_barred = [], 0, 0, 0
+        for subject in SUBJECTS:
+            prefix = f"Sem{sem}_{subject}"
+            absences = min(CLASSES_PER_SUBJECT, max(0, int(_mark(data, f"{prefix}_Absences"))))
+            barred = absences > MAX_ABSENCES_ALLOWED
+            quiz = _mark(data, f"{prefix}_Quiz")
+            assignment = _mark(data, f"{prefix}_Assignment")
+            final_exam = 0.0 if barred else _mark(data, f"{prefix}_FinalExam")
+            # Rounded to 1 dp like the dataset, so 8.8 + 20.2 is 29.0 and not 29.000000000000004
+            carry_total = round(quiz + assignment, 1)
+            total = round(carry_total + final_exam, 1)
+            grade, point, passed = subject_outcome(carry_total, final_exam, total, barred)
+            subjects[(sem, subject)] = {
+                "quiz": quiz, "assignment": assignment, "carry_total": carry_total,
+                "final_exam": final_exam, "total": total,
+                "grade": grade, "grade_point": point,
+                "passed": passed, "absences": absences, "barred": barred,
+                "attendance": round((CLASSES_PER_SUBJECT - absences) / CLASSES_PER_SUBJECT * 100, 1),
+            }
+            points.append(point)
+            sem_absences += absences
+            sem_failed += 0 if passed else 1
+            sem_barred += 1 if barred else 0
+        summary[f"Sem{sem}_CGPA"] = round(min(4.0, max(CGPA_FLOOR, sum(points) / len(points))), 2)
+        summary[f"Sem{sem}_AttendancePct"] = round(
+            (TOTAL_CLASSES_SEM - sem_absences) / TOTAL_CLASSES_SEM * 100, 1)
+        summary[f"Sem{sem}_TotalAbsences"] = sem_absences
+        summary[f"Sem{sem}_BarredSubjects"] = sem_barred
+        summary[f"Sem{sem}_SubjectsFailed"] = sem_failed
+    if sems:
+        total_absences = sum(summary[f"Sem{s}_TotalAbsences"] for s in sems)
+        all_classes = TOTAL_CLASSES_SEM * len(sems)
+        summary["AvgCGPA"] = round(sum(summary[f"Sem{s}_CGPA"] for s in sems) / len(sems), 2)
+        summary["OverallAttendancePct"] = round((all_classes - total_absences) / all_classes * 100, 1)
+        summary["AttendanceTrend"] = round(
+            summary[f"Sem{sems[-1]}_AttendancePct"] - summary[f"Sem{sems[0]}_AttendancePct"], 1)
+        summary["TotalBarredSubjects"] = sum(summary[f"Sem{s}_BarredSubjects"] for s in sems)
+        summary["TotalFailedSubjects"] = sum(summary[f"Sem{s}_SubjectsFailed"] for s in sems)
+    return {"semesters": sems, "subjects": subjects, "summary": summary}
+
+
+def fill_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Fill a section CSV's CGPA/attendance columns from its marks, so lecturers can leave them blank."""
+    df = df.copy()
+    for idx, row in df.iterrows():
+        summary = derive_academic_summary({str(k).strip(): v for k, v in row.to_dict().items()})["summary"]
+        for sem in range(1, 4):
+            for col in (f"Sem{sem}_CGPA", f"Sem{sem}_AttendancePct"):
+                if col in summary:
+                    df.loc[idx, col] = summary[col]
+    return df
+
+
+EMAIL_RE   = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+NAME_KEYS  = ("FullName", "Name", "Full Name", "StudentName", "full_name")
+EMAIL_KEYS = ("Email", "email", "EmailAddress", "Email Address")
+
+
+def _contact_values(data):
+    name = _row_value(data, *NAME_KEYS, default=None)
+    email = _row_value(data, *EMAIL_KEYS, default=None)
+    return (str(name).strip()[:100] if name is not None else None,
+            str(email).strip().lower() if email is not None else None)
+
+
+def contact_error(data, student_id=None):
+    """Message for an email that is malformed or belongs to another student, else None."""
+    _, email = _contact_values(data)
+    if not email:
+        return None
+    if not EMAIL_RE.match(email) or len(email) > 120:
+        return f"'{email}' is not a valid email address."
+    owner = Student.query.filter(Student.email == email,
+                                 Student.student_id != str(student_id)).first()
+    if owner:
+        return f"Email {email} is already used by student {owner.student_id}."
+    return None
+
+
+def _apply_contacts(student, data):
+    """Copy name/email onto the student. Bad or duplicate emails from a file are skipped."""
+    name, email = _contact_values(data)
+    if name:
+        student.full_name = name
+    if email and contact_error(data, student.student_id) is None:
+        student.email = email
+
+
 def _sync_student_payload(student, pred, data):
+    is_new = pred.id is None      # captured before any query autoflushes the new row
+    _apply_contacts(student, data)
     student.age = _clean_int(data, "Age", student.age or 20)
     student.gender = _clean_text(data, "Gender", student.gender or "Male")
     student.ethnicity = _clean_text(data, "Ethnicity", student.ethnicity or "Malay")
@@ -1184,74 +1451,63 @@ def _sync_student_payload(student, pred, data):
     student.music = _clean_text(data, "Music", student.music or "No")
     student.volunteering = _clean_text(data, "Volunteering", student.volunteering or "No")
 
-    pred.sem1_cgpa = _clean_float(data, "Sem1_CGPA", pred.sem1_cgpa or 0)
-    pred.sem2_cgpa = _clean_float(data, "Sem2_CGPA", pred.sem2_cgpa or 0)
-    pred.sem3_cgpa = _clean_float(data, "Sem3_CGPA", pred.sem3_cgpa or 0)
-    pred.avg_cgpa = _clean_float(data, "AvgCGPA", pred.avg_cgpa or 0)
-    pred.sem1_att = _clean_float(data, "Sem1_AttendancePct", pred.sem1_att or 0)
-    pred.sem2_att = _clean_float(data, "Sem2_AttendancePct", pred.sem2_att or 0)
-    pred.sem3_att = _clean_float(data, "Sem3_AttendancePct", pred.sem3_att or 0)
-    pred.overall_att = _clean_float(data, "OverallAttendancePct", pred.overall_att or 0)
-    pred.att_trend = _clean_float(data, "AttendanceTrend", pred.att_trend or 0)
+    # Summary figures come from the marks whenever marks were entered for that semester.
+    # Typed summary values are only used for semesters without marks (e.g. a summary-only CSV).
+    derived = derive_academic_summary(data)
+    summary = derived["summary"]
 
-    total_failed = 0
-    total_barred = 0
+    def pick(key, current):
+        return summary[key] if key in summary else _clean_float(data, key, current)
+
     for sem in (1, 2, 3):
-        sem_failed = 0
-        sem_barred = 0
-        for subject in SUBJECTS:
-            prefix = f"Sem{sem}_{subject}"
-            quiz = _clean_float(data, f"{prefix}_Quiz", 0)
-            assignment = _clean_float(data, f"{prefix}_Assignment", 0)
-            final_exam = _clean_float(data, f"{prefix}_FinalExam", 0)
-            absences = _clean_int(data, f"{prefix}_Absences", 0)
-            carry_total = quiz + assignment
-            total = carry_total + final_exam
-            barred = absences > 5
-            passed = carry_total >= 24 and final_exam >= 16 and total >= 50 and not barred
+        setattr(pred, f"sem{sem}_cgpa", pick(f"Sem{sem}_CGPA", getattr(pred, f"sem{sem}_cgpa") or 0))
+        setattr(pred, f"sem{sem}_att", pick(f"Sem{sem}_AttendancePct", getattr(pred, f"sem{sem}_att") or 0))
+        setattr(pred, f"sem{sem}_barred",
+                int(pick(f"Sem{sem}_BarredSubjects", getattr(pred, f"sem{sem}_barred") or 0)))
+    pred.avg_cgpa = pick("AvgCGPA", pred.avg_cgpa or 0)
+    pred.overall_att = pick("OverallAttendancePct", pred.overall_att or 0)
+    pred.att_trend = pick("AttendanceTrend", pred.att_trend or 0)
+    pred.total_failed = int(pick("TotalFailedSubjects", pred.total_failed or 0))
+    pred.total_barred = int(pick("TotalBarredSubjects", pred.total_barred or 0))
 
-            assessment = Assessment.query.filter_by(
-                student_id=student.student_id, semester=sem, subject=subject).first()
-            if not assessment:
-                assessment = Assessment(student_id=student.student_id, semester=sem, subject=subject)
-                db.session.add(assessment)
-            assessment.quiz = quiz
-            assessment.assignment = assignment
-            assessment.carry_total = carry_total
-            assessment.final_exam = final_exam
-            assessment.total = total
-            assessment.grade = "Bar" if barred else _grade_letter(total)
-            assessment.grade_point = 0 if barred else get_grade_point(total)
-            assessment.pass_fail = "Pass" if passed else "Fail"
+    for (sem, subject), result in derived["subjects"].items():
+        assessment = Assessment.query.filter_by(
+            student_id=student.student_id, semester=sem, subject=subject).first()
+        if not assessment:
+            assessment = Assessment(student_id=student.student_id, semester=sem, subject=subject)
+            db.session.add(assessment)
+        assessment.quiz = result["quiz"]
+        assessment.assignment = result["assignment"]
+        assessment.carry_total = result["carry_total"]
+        assessment.final_exam = result["final_exam"]
+        assessment.total = result["total"]
+        assessment.grade = result["grade"]
+        assessment.grade_point = result["grade_point"]
+        assessment.pass_fail = "Pass" if result["passed"] else "Fail"
 
-            attendance = AttendanceRecord.query.filter_by(
-                student_id=student.student_id, semester=sem, subject=subject).first()
-            if not attendance:
-                attendance = AttendanceRecord(student_id=student.student_id, semester=sem, subject=subject)
-                db.session.add(attendance)
-            attendance.absences = absences
-            attendance.attendance = round(max(0, TOTAL_CLASSES_SEM - absences) / TOTAL_CLASSES_SEM * 100, 1)
-            attendance.barred = barred
+        attendance = AttendanceRecord.query.filter_by(
+            student_id=student.student_id, semester=sem, subject=subject).first()
+        if not attendance:
+            attendance = AttendanceRecord(student_id=student.student_id, semester=sem, subject=subject)
+            db.session.add(attendance)
+        attendance.absences = result["absences"]
+        attendance.attendance = result["attendance"]
+        attendance.barred = result["barred"]
 
-            sem_failed += 0 if passed else 1
-            sem_barred += 1 if barred else 0
-        total_failed += sem_failed
-        total_barred += sem_barred
-        setattr(pred, f"sem{sem}_barred", _clean_int(data, f"Sem{sem}_BarredSubjects", sem_barred))
-
-    pred.total_failed = _clean_int(data, "TotalFailedSubjects", total_failed)
-    pred.total_barred = _clean_int(data, "TotalBarredSubjects", total_barred)
     risk_prob = _clean_float(data, "RiskProbability", pred.risk_probability or 0)
     pred.risk_probability = risk_prob / 100 if risk_prob > 1 else risk_prob
     pred.prediction_label = _clean_text(data, "PredictionLabel", pred.prediction_label or "Safe")
     next_risk_level = _clean_text(data, "RiskLevel", get_risk_level(pred.risk_probability))
-    maybe_notify_risk_change(student, pred, next_risk_level)
+    if not is_new:
+        maybe_notify_risk_change(student, pred, next_risk_level)
     pred.risk_level = next_risk_level
 
 
 def _student_full_payload(student, pred):
     payload = {
         "student_id": student.student_id,
+        "FullName": student.full_name or "",
+        "Email": student.email or "",
         "Age": student.age,
         "Gender": student.gender,
         "Ethnicity": student.ethnicity,
@@ -1288,10 +1544,10 @@ def _student_full_payload(student, pred):
                 student_id=student.student_id, semester=sem, subject=subject).first()
             attendance = AttendanceRecord.query.filter_by(
                 student_id=student.student_id, semester=sem, subject=subject).first()
-            payload[f"{prefix}_Quiz"] = assessment.quiz if assessment else 0
-            payload[f"{prefix}_Assignment"] = assessment.assignment if assessment else 0
-            payload[f"{prefix}_FinalExam"] = assessment.final_exam if assessment else 0
-            payload[f"{prefix}_Absences"] = attendance.absences if attendance else 0
+            payload[f"{prefix}_Quiz"] = assessment.quiz if assessment else None
+            payload[f"{prefix}_Assignment"] = assessment.assignment if assessment else None
+            payload[f"{prefix}_FinalExam"] = assessment.final_exam if assessment else None
+            payload[f"{prefix}_Absences"] = attendance.absences if attendance else None
     return payload
 
 
@@ -1306,6 +1562,8 @@ def api_add_student():
         if Student.query.filter_by(student_id=student_id).first():
             return jsonify({"success": False,
                             "error": f"Student ID {student_id} already exists."}), 400
+        if err := contact_error(data, student_id):
+            return jsonify({"success": False, "error": err}), 400
         active_section = get_active_section()
         if session.get("lecturer_logged_in") and not active_section:
             return jsonify({"success": False, "error": "Create or upload a class section before adding students."}), 400
@@ -1322,6 +1580,7 @@ def api_add_student():
         db.session.add(p)
         _sync_student_payload(s, p, data)
         db.session.commit()
+        dispatch_pending_notifications()
         return jsonify({"success": True, "message": f"Student {student_id} added."})
     except Exception as e:
         db.session.rollback()
@@ -1387,6 +1646,7 @@ def api_import_students():
                 music=str(val("Music", "music", default="No")),
                 volunteering=str(val("Volunteering", "volunteering", default="No")),
             )
+            _apply_contacts(s, row_dict)
             p = Prediction(
                 student_id=student_id,
                 sem1_cgpa=float(val("Sem1_CGPA", "sem1_cgpa", default=0)),
@@ -1404,6 +1664,8 @@ def api_import_students():
             )
             db.session.add(s)
             db.session.add(p)
+            if semesters_with_marks(row_dict):
+                _sync_student_payload(s, p, row_dict)
             imported += 1
 
         db.session.commit()
@@ -1433,7 +1695,9 @@ def switch_section(section_id):
     if section.lecturer_id != current_lecturer_id():
         abort(403)
     session["active_section_id"] = section.id
-    return redirect(url_for("lecturer_dashboard"))
+    # Return to the tab the lecturer was on (e.g. My classes), not always Overview
+    tab = request.args.get("tab", "")
+    return redirect(url_for("lecturer_dashboard") + (f"#{tab}" if re.fullmatch(r"[a-z]+", tab) else ""))
 
 
 @app.route("/api/sections")
@@ -1461,6 +1725,7 @@ def api_sections():
             "model": "XGBoost" if XGBOOST_AVAILABLE else "GradientBoosting fallback",
             "student_rows": [{
                 "id": s.student_id,
+                "name": s.full_name or "",
                 "gender": s.gender or "-",
                 "avg_cgpa": round(float(p.avg_cgpa or 0), 2),
                 "risk_level": p.risk_level,
@@ -1478,13 +1743,15 @@ def section_template():
     cols = expected_template_columns(max(1, min(3, sem_depth)))
     sample = {c: "" for c in cols}
     sample.update({
-        "StudentID": "S1001", "Age": 20, "Gender": "Female",
+        "StudentID": "S1001", "FullName": "Nur Aisyah binti Rahman",
+        "Email": "aisyah.rahman@student.example.edu.my", "Age": 20, "Gender": "Female",
         "Ethnicity": "Malay", "ParentalEducation": "Secondary School (SPM)",
         "StudyTimeWeekly": 10, "StudyMethod": "Mixed",
         "Tutoring": "No", "Extracurricular": "Yes",
         "Sports": "No", "Music": "No", "Volunteering": "Yes",
         "PredictionLabel": "Safe", "RiskLevel": "Low Risk", "RiskProbability": 0.18,
     })
+    # CGPA and attendance % are worked out from the marks on upload, so they can stay blank
     csv_text = pd.DataFrame([sample], columns=cols).to_csv(index=False)
     return Response(csv_text, mimetype="text/csv",
                     headers={"Content-Disposition": f"attachment; filename=section_sem{sem_depth}_template.csv"})
@@ -1501,7 +1768,7 @@ def upload_section():
     if not upload.filename.lower().endswith(".csv"):
         return jsonify({"success": False, "error": "Section onboarding currently accepts CSV files only."}), 400
     try:
-        df = pd.read_csv(upload)
+        df = fill_derived_columns(pd.read_csv(upload))
         sem_depth = detect_semester_depth(df.columns)
         required = {"StudentID", "PredictionLabel"}
         missing = required - set(df.columns)
@@ -1554,6 +1821,7 @@ def upload_section():
         if session.get("active_section_id") is None:
             session["active_section_id"] = section.id
         db.session.commit()
+        dispatch_pending_notifications()
         return jsonify({
             "success": True,
             "message": f"{section.section_name}: {imported} added, {updated} updated, {skipped} skipped. Trained {model_name} sem-depth {section.sem_depth} model.",
@@ -1568,18 +1836,37 @@ def upload_section():
 @lecturer_required
 def api_notifications():
     section = get_active_section()
-    q = RiskNotification.query
-    if section:
-        q = q.filter_by(section_id=section.id)
+    q = RiskNotification.query.filter(
+        RiskNotification.section_id == section.id if section else false())
     rows = q.order_by(RiskNotification.created_at.desc()).limit(25).all()
-    return jsonify({"notifications": [{
+    return jsonify({"email_enabled": EMAIL_ENABLED, "notifications": [{
+        "id": r.id,
         "student_id": r.student_id,
         "old": r.old_risk_level,
         "new": r.new_risk_level,
         "recipient": r.recipient or "no email",
-        "sent": r.sent,
+        "status": r.status or ("sent" if r.sent else "not_sent"),
+        "sent_at": r.sent_at.strftime("%Y-%m-%d %H:%M") if r.sent_at else None,
         "created_at": r.created_at.strftime("%Y-%m-%d %H:%M"),
     } for r in rows]})
+
+
+@app.route("/api/notifications/retry", methods=["POST"])
+@lecturer_required
+def api_notifications_retry():
+    if not EMAIL_ENABLED:
+        return jsonify({"success": False, "error": "Email is not configured on the server (SMTP_HOST / SMTP_FROM)."}), 400
+    section = get_active_section()
+    if not section:
+        return jsonify({"success": False, "error": "No active section."}), 400
+    count = (RiskNotification.query
+             .filter(RiskNotification.section_id == section.id,
+                     RiskNotification.recipient.isnot(None),
+                     RiskNotification.status.in_(["failed", "not_configured"]))
+             .update({"status": "pending"}, synchronize_session=False))
+    db.session.commit()
+    dispatch_pending_notifications()
+    return jsonify({"success": True, "message": f"Retrying {count} notification(s)."})
 
 
 @app.route("/api/students/<student_id>/full")
@@ -1605,6 +1892,8 @@ def api_update_student(student_id):
             return jsonify({"success": False, "error": "Not allowed for this student."}), 403
         data = request.get_json() or {}
         original_id = student.student_id
+        if err := contact_error(data, original_id):
+            return jsonify({"success": False, "error": err}), 400
         new_id = str(data.get("student_id", student.student_id)).strip()
         if new_id and new_id != student.student_id:
             if Student.query.filter_by(student_id=new_id).first():
@@ -1615,6 +1904,10 @@ def api_update_student(student_id):
                 assessment.student_id = new_id
             for attendance in AttendanceRecord.query.filter_by(student_id=old_id).all():
                 attendance.student_id = new_id
+            for intervention in Intervention.query.filter_by(student_id=old_id).all():
+                intervention.student_id = new_id
+            for notice in RiskNotification.query.filter_by(student_id=old_id).all():
+                notice.student_id = new_id
             student.student_id = new_id
         pred = (Prediction.query.filter_by(student_id=student.student_id).first()
                 or Prediction.query.filter_by(student_id=original_id).first())
@@ -1630,6 +1923,7 @@ def api_update_student(student_id):
             pred.student_id = student.student_id
         _sync_student_payload(student, pred, data)
         db.session.commit()
+        dispatch_pending_notifications()
         return jsonify({"success": True, "message": f"Student {student.student_id} updated."})
     except Exception as e:
         db.session.rollback()
@@ -1652,6 +1946,236 @@ def api_delete_student(student_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+#  INTERVENTIONS — follow-up actions on at-risk students
+INTERVENTION_TYPES    = ["Meeting", "Email / Message", "Phone Call", "Counselling Referral",
+                         "Academic Advising", "Tutoring Referral", "Note"]
+INTERVENTION_STATUSES = ["Open", "In Progress", "Resolved"]
+
+
+def current_staff_identity():
+    if session.get("lecturer_logged_in"):
+        return session.get("lecturer_user"), "lecturer"
+    return session.get("admin_user"), "admin"
+
+
+def _parse_date(value):
+    value = (value or "").strip()
+    return date.fromisoformat(value) if value else None
+
+
+@app.route("/api/students/<student_id>/interventions", methods=["GET", "POST"])
+@login_required
+def api_student_interventions(student_id):
+    student = Student.query.filter_by(student_id=str(student_id)).first()
+    if not student:
+        return jsonify({"success": False, "error": "Student not found."}), 404
+    if not staff_can_access_student(student):
+        return jsonify({"success": False, "error": "Not allowed for this student."}), 403
+
+    if request.method == "POST":
+        data = request.get_json() or {}
+        action_type = str(data.get("action_type", "")).strip()
+        status = str(data.get("status", "Open")).strip()
+        notes = str(data.get("notes", "")).strip()
+        if action_type not in INTERVENTION_TYPES:
+            return jsonify({"success": False, "error": "Choose a valid action type."}), 400
+        if status not in INTERVENTION_STATUSES:
+            return jsonify({"success": False, "error": "Choose a valid status."}), 400
+        if not notes:
+            return jsonify({"success": False, "error": "Notes are required."}), 400
+        try:
+            follow_up = _parse_date(data.get("follow_up_date"))
+        except ValueError:
+            return jsonify({"success": False, "error": "Follow-up date must be YYYY-MM-DD."}), 400
+        author, role = current_staff_identity()
+        db.session.add(Intervention(
+            student_id=student.student_id, action_type=action_type, notes=notes[:4000],
+            status=status, follow_up_date=follow_up,
+            created_by=author, created_by_role=role,
+        ))
+        db.session.commit()
+
+    rows = (Intervention.query.filter_by(student_id=student.student_id)
+            .order_by(Intervention.created_at.desc()).all())
+    pred = Prediction.query.filter_by(student_id=student.student_id).first()
+    return jsonify({
+        "success": True,
+        "student_id": student.student_id,
+        "student_name": student.full_name or "",
+        "student_email": student.email or "",
+        "risk_level": pred.risk_level if pred else None,
+        "risk_prob": round(float(pred.risk_probability or 0) * 100, 1) if pred else None,
+        "types": INTERVENTION_TYPES,
+        "statuses": INTERVENTION_STATUSES,
+        "interventions": [r.to_dict() for r in rows],
+    })
+
+
+@app.route("/api/interventions/<int:intervention_id>", methods=["POST"])
+@login_required
+def api_update_intervention(intervention_id):
+    row = db.session.get(Intervention, intervention_id)
+    if not row:
+        return jsonify({"success": False, "error": "Intervention not found."}), 404
+    if not staff_can_access_student(row.student):
+        return jsonify({"success": False, "error": "Not allowed for this student."}), 403
+    data = request.get_json() or {}
+    if "status" in data:
+        if data["status"] not in INTERVENTION_STATUSES:
+            return jsonify({"success": False, "error": "Choose a valid status."}), 400
+        row.status = data["status"]
+    if "follow_up_date" in data:
+        try:
+            row.follow_up_date = _parse_date(data.get("follow_up_date"))
+        except ValueError:
+            return jsonify({"success": False, "error": "Follow-up date must be YYYY-MM-DD."}), 400
+    db.session.commit()
+    return jsonify({"success": True, "intervention": row.to_dict()})
+
+
+@app.route("/api/interventions")
+@login_required
+def api_interventions():
+    """Case list across every student the current staff member can see."""
+    show = request.args.get("show", "open")
+    q = (db.session.query(Intervention, Prediction, Student.full_name)
+         .join(Student, Student.student_id == Intervention.student_id)
+         .outerjoin(Prediction, Prediction.student_id == Intervention.student_id)
+         .filter(lecturer_section_filter()))
+    if show == "open":
+        q = q.filter(Intervention.status != "Resolved")
+    rows = (q.order_by(Intervention.follow_up_date.is_(None),
+                       Intervention.follow_up_date.asc(),
+                       Intervention.created_at.desc())
+            .limit(200).all())
+    open_count = (db.session.query(db.func.count(Intervention.id))
+                  .join(Student, Student.student_id == Intervention.student_id)
+                  .filter(lecturer_section_filter(), Intervention.status != "Resolved")
+                  .scalar())
+    today = date.today()
+    return jsonify({
+        "open_count": open_count,
+        "statuses": INTERVENTION_STATUSES,
+        "interventions": [{
+            **i.to_dict(),
+            "student_name": name or "",
+            "risk_level": p.risk_level if p else None,
+            "overdue": bool(i.follow_up_date and i.follow_up_date < today and i.status != "Resolved"),
+        } for i, p, name in rows],
+    })
+
+
+
+#  ADMIN — lecturer accounts and section assignment
+def _lecturer_summary(lecturer: Lecturer) -> dict:
+    section_ids = [s.id for s in lecturer.sections]
+    students = at_risk = 0
+    if section_ids:
+        students = Student.query.filter(Student.section_id.in_(section_ids)).count()
+        at_risk = (db.session.query(Prediction)
+                   .join(Student, Student.student_id == Prediction.student_id)
+                   .filter(Student.section_id.in_(section_ids),
+                           Prediction.prediction_label == "At-Risk").count())
+    return {
+        "id": lecturer.id,
+        "username": lecturer.username,
+        "full_name": lecturer.full_name,
+        "email": lecturer.email or "",
+        "is_active": lecturer.is_active,
+        "sections": len(section_ids),
+        "students": students,
+        "at_risk": at_risk,
+        "created_at": lecturer.created_at.strftime("%Y-%m-%d") if lecturer.created_at else "",
+    }
+
+
+@app.route("/api/admin/lecturers", methods=["GET", "POST"])
+@admin_required
+def api_admin_lecturers():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        username = str(data.get("username", "")).strip()
+        full_name = str(data.get("full_name", "")).strip()
+        email = str(data.get("email", "")).strip() or None
+        password = str(data.get("password", ""))
+        if not username or not full_name:
+            return jsonify({"success": False, "error": "Username and full name are required."}), 400
+        if len(password) < 8:
+            return jsonify({"success": False, "error": "Password must be at least 8 characters."}), 400
+        if Lecturer.query.filter_by(username=username).first():
+            return jsonify({"success": False, "error": f"Username '{username}' is already taken."}), 400
+        lecturer = Lecturer(username=username, full_name=full_name, email=email, is_active=True)
+        lecturer.set_password(password)
+        db.session.add(lecturer)
+        db.session.commit()
+        return jsonify({"success": True, "message": f"Lecturer '{username}' created."})
+
+    lecturers = Lecturer.query.order_by(Lecturer.full_name.asc()).all()
+    return jsonify({"lecturers": [_lecturer_summary(l) for l in lecturers]})
+
+
+@app.route("/api/admin/lecturers/<int:lecturer_id>/status", methods=["POST"])
+@admin_required
+def api_admin_lecturer_status(lecturer_id):
+    lecturer = db.session.get(Lecturer, lecturer_id)
+    if not lecturer:
+        return jsonify({"success": False, "error": "Lecturer not found."}), 404
+    lecturer.is_active = bool((request.get_json() or {}).get("is_active"))
+    db.session.commit()
+    state = "activated" if lecturer.is_active else "deactivated"
+    return jsonify({"success": True, "message": f"{lecturer.full_name} {state}."})
+
+
+@app.route("/api/admin/lecturers/<int:lecturer_id>/password", methods=["POST"])
+@admin_required
+def api_admin_lecturer_password(lecturer_id):
+    lecturer = db.session.get(Lecturer, lecturer_id)
+    if not lecturer:
+        return jsonify({"success": False, "error": "Lecturer not found."}), 404
+    password = str((request.get_json() or {}).get("password", ""))
+    if len(password) < 8:
+        return jsonify({"success": False, "error": "Password must be at least 8 characters."}), 400
+    lecturer.set_password(password)
+    db.session.commit()
+    return jsonify({"success": True, "message": f"Password reset for {lecturer.full_name}."})
+
+
+@app.route("/api/admin/sections")
+@admin_required
+def api_admin_sections():
+    sections = ClassSection.query.order_by(ClassSection.section_name.asc()).all()
+    return jsonify({"sections": [{
+        "id": s.id,
+        "name": s.section_name,
+        "semester": s.current_semester,
+        "lecturer_id": s.lecturer_id,
+        "lecturer_name": s.lecturer.full_name if s.lecturer else "-",
+        "students": Student.query.filter_by(section_id=s.id).count(),
+        "archived": s.is_archived,
+    } for s in sections]})
+
+
+@app.route("/api/admin/sections/<int:section_id>/assign", methods=["POST"])
+@admin_required
+def api_admin_assign_section(section_id):
+    section = db.session.get(ClassSection, section_id)
+    if not section:
+        return jsonify({"success": False, "error": "Section not found."}), 404
+    lecturer = db.session.get(Lecturer, int((request.get_json() or {}).get("lecturer_id") or 0))
+    if not lecturer:
+        return jsonify({"success": False, "error": "Lecturer not found."}), 404
+    clash = ClassSection.query.filter_by(lecturer_id=lecturer.id,
+                                         section_name=section.section_name).first()
+    if clash and clash.id != section.id:
+        return jsonify({"success": False,
+                        "error": f"{lecturer.full_name} already has a section named {section.section_name}."}), 400
+    section.lecturer_id = lecturer.id
+    db.session.commit()
+    return jsonify({"success": True,
+                    "message": f"{section.section_name} assigned to {lecturer.full_name}."})
 
 
 
@@ -1796,6 +2320,8 @@ def api_students():
     if search:
         q = q.filter(db.or_(
             Student.student_id.ilike(f"%{search}%"),
+            Student.full_name.ilike(f"%{search}%"),
+            Student.email.ilike(f"%{search}%"),
             Student.gender.ilike(f"%{search}%"),
             Student.ethnicity.ilike(f"%{search}%"),
         ))
@@ -1803,7 +2329,8 @@ def api_students():
     rows = (q.order_by(Prediction.risk_probability.desc())
             .offset((page - 1) * per_page).limit(per_page).all())
     records = [
-        {"id": s.student_id, "gender": s.gender, "ethnicity": s.ethnicity,
+        {"id": s.student_id, "name": s.full_name or "", "email": s.email or "",
+         "gender": s.gender, "ethnicity": s.ethnicity,
          "attendance": round(float(p.overall_att or 0), 1),
          "avg_cgpa":   round(float(p.avg_cgpa    or 0), 2),
          "prediction": p.prediction_label,
@@ -1818,13 +2345,15 @@ def api_students():
 @app.route("/api/live-stats")
 @login_required
 def api_live_stats():
-    total   = LivePrediction.query.count()
-    at_risk = LivePrediction.query.filter_by(prediction="At-Risk").count()
-    safe    = LivePrediction.query.filter_by(prediction="Safe").count()
-    avg_q   = db.session.query(
-        db.func.avg(LivePrediction.risk_probability)).scalar()
-    recent  = (LivePrediction.query
-               .order_by(LivePrediction.timestamp.desc()).limit(10).all())
+    # Lecturers see only the predictions they ran; the admin sees everything
+    q = LivePrediction.query
+    if current_lecturer_id():
+        q = q.filter(LivePrediction.lecturer_id == current_lecturer_id())
+    total   = q.count()
+    at_risk = q.filter(LivePrediction.prediction == "At-Risk").count()
+    safe    = q.filter(LivePrediction.prediction == "Safe").count()
+    avg_q   = q.with_entities(db.func.avg(LivePrediction.risk_probability)).scalar()
+    recent  = q.order_by(LivePrediction.timestamp.desc()).limit(10).all()
     return jsonify({
         "total":         total,
         "at_risk":       at_risk,
@@ -1855,20 +2384,31 @@ def predict():
     try:
         f = request.form
         def flt(key, default=0.0): return float(f.get(key, default) or default)
-        def ing(key, default=0):   return int(float(f.get(key, default) or default))
+
+        # Attendance %, total absences and Sem 3 CGPA are worked out from the per-subject
+        # marks with the same formulas as the student records (barred subject → final counts as 0)
+        form_keys = {"Math": "math", "Science": "sci", "English": "eng"}
+        sem3 = derive_academic_summary({
+            f"Sem3_{subject}_{field}": f.get(f"{key}_{suffix}", "")
+            for subject, key in form_keys.items()
+            for field, suffix in (("Quiz", "quiz"), ("Assignment", "assn"),
+                                  ("FinalExam", "final"), ("Absences", "abs3"))
+        })
+        if 3 not in sem3["semesters"]:
+            raise ValueError("Enter the Semester 3 marks and absences for each subject.")
+        subj = {key: sem3["subjects"][(3, subject)] for subject, key in form_keys.items()}
 
         raw = {
-            # Attendance
-            "att3":  flt("att3"),   "abs3":  ing("abs3"),
-            "sem3":  flt("sem3"),
+            # Attendance & CGPA (calculated)
+            "att3":  sem3["summary"]["Sem3_AttendancePct"],
+            "abs3":  sem3["summary"]["Sem3_TotalAbsences"],
+            "sem3":  sem3["summary"]["Sem3_CGPA"],
             # Per-subject carry marks
-            "math_quiz": flt("math_quiz"), "math_assn": flt("math_assn"), "math_final": flt("math_final"),
-            "sci_quiz":  flt("sci_quiz"),  "sci_assn":  flt("sci_assn"),  "sci_final":  flt("sci_final"),
-            "eng_quiz":  flt("eng_quiz"),  "eng_assn":  flt("eng_assn"),  "eng_final":  flt("eng_final"),
-            # Per-subject absences (optional)
-            "math_abs3": flt("math_abs3", ing("abs3") / 3),
-            "sci_abs3":  flt("sci_abs3",  ing("abs3") / 3),
-            "eng_abs3":  flt("eng_abs3",  ing("abs3") / 3),
+            **{f"{key}_{name}": subj[key][field]
+               for key in form_keys.values()
+               for name, field in (("quiz", "quiz"), ("assn", "assignment"), ("final", "final_exam"))},
+            # Per-subject absences
+            **{f"{key}_abs3": subj[key]["absences"] for key in form_keys.values()},
             # Student profile
             "study_hours":     flt("study_hours"),
             "gender":          f.get("gender",         "Male"),
@@ -1921,6 +2461,8 @@ def predict():
             extracurricular=raw["extracurricular"], sports=raw["sports"],
             music=raw["music"], volunteering=raw["volunteering"],
             prediction=result_label, risk_probability=risk_prob, risk_level=risk_lbl,
+            lecturer_id=current_lecturer_id(),
+            section_id=active_section.id if active_section else None,
         ))
         db.session.commit()
 

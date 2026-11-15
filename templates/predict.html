@@ -121,6 +121,10 @@ nav{height:56px;padding:0 22px;display:flex;align-items:center;justify-content:s
   .subj-row{grid-template-columns:1fr 1fr}
   .content{padding:16px}
 }
+.auto-pill{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:5px;background:rgba(13,148,136,0.12);color:#0D9488;font-size:9px;letter-spacing:.6px;vertical-align:middle}
+.bar-warn{color:#DC2626 !important;font-weight:600}
+.sem-stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
+.sem-stats span{padding:4px 10px;border:1px solid var(--border);border-radius:999px}
 </style>
 </head>
 <body>
@@ -142,12 +146,13 @@ nav{height:56px;padding:0 22px;display:flex;align-items:center;justify-content:s
 <div class="content">
 
   <div class="page-hd">
-    <div class="model-badge">&#9670; Semester 3 → Semester 4 Prediction Model &nbsp; | &nbsp; 85.6% accuracy · ROC-AUC 0.93</div>
+    <div class="model-badge">&#9670; Semester 3 → Semester 4 Prediction Model &nbsp; | &nbsp; 83.0% test accuracy · ROC-AUC 0.93</div>
     <div class="page-title">Predict Semester 4 Risk</div>
     <div class="page-sub">
       Enter a student's <strong>current Semester 3</strong> data.
       Carry marks are entered <strong>per subject</strong> — Math, Science, and English each have
       their own Quiz, Assignment, and Final Exam marks.
+      Attendance and CGPA are calculated automatically.
       Every submission is logged to the admin Live Feed.
     </div>
   </div>
@@ -203,184 +208,8 @@ nav{height:56px;padding:0 22px;display:flex;align-items:center;justify-content:s
 
   <form method="POST" action="/predict" id="predictForm">
 
-    <!-- ══ ATTENDANCE & CGPA ══ -->
-    <div class="fcard" style="animation-delay:.04s">
-      <div class="slabel">Semester 3 — Attendance &amp; CGPA</div>
-      <div class="g3">
-        <div class="field">
-          <label>Attendance % <span style="color:var(--dim)">(0–100)</span></label>
-          <input type="number" name="att3" min="0" max="100" step="0.1"
-            placeholder="e.g. 71.4"
-            value="{{ request.form.att3 or '' }}" required>
-          <span class="hint">IIUM barring threshold: 64.3%</span>
-        </div>
-        <div class="field">
-          <label>Total absences <span style="color:var(--dim)">(max 15)</span></label>
-          <input type="number" name="abs3" min="0" max="42" step="1"
-            placeholder="e.g. 9"
-            value="{{ request.form.abs3 or '' }}" required>
-          <span class="hint">3 subjects × max 5 each = 15</span>
-        </div>
-        <div class="field">
-          <label>Sem 3 CGPA <span style="color:var(--dim)">(1.50–4.00)</span></label>
-          <input type="number" name="sem3" min="1.5" max="4.0" step="0.01"
-            placeholder="e.g. 3.20"
-            value="{{ request.form.sem3 or '' }}" required>
-          <span class="hint">Computed from subject grade points</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══ PER-SUBJECT MARKS ══ -->
-    <div class="fcard" style="animation-delay:.08s">
-      <div class="slabel">Semester 3 — Per-Subject Carry Marks &amp; Final Exam</div>
-
-      <div class="info-strip" style="margin-top:0;margin-bottom:16px">
-        <span style="font-size:16px">&#9432;</span>
-        <span>
-          Each subject has <strong style="color:var(--ink)">its own</strong>
-          Quiz (/20) + Assignment (/40) = Carry Total (/60), plus a Final Exam (/40).
-          Total = Carry + Final (/100).
-          Pass: Carry &ge;24, Final &ge;16, Total &ge;50.
-        </span>
-      </div>
-
-      <!-- Math -->
-      <div class="subj-block">
-        <div class="subj-name">
-          <span class="subj-dot math-dot"></span> Mathematics
-        </div>
-        <div class="subj-row">
-          <div class="field">
-            <label>Quiz <span style="color:var(--dim)">/20</span></label>
-            <input type="number" name="math_quiz" min="0" max="20" step="0.1"
-              placeholder="e.g. 14.0" id="math_quiz"
-              value="{{ request.form.math_quiz or '' }}"
-              oninput="updateCarry('math')" required>
-          </div>
-          <div class="field">
-            <label>Assignment <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="math_assn" min="0" max="40" step="0.1"
-              placeholder="e.g. 28.0" id="math_assn"
-              value="{{ request.form.math_assn or '' }}"
-              oninput="updateCarry('math')" required>
-          </div>
-          <div class="field">
-            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
-            <div class="carry-total-preview" id="math_carry_preview">
-              <span id="math_carry_val">—</span>
-              <span class="ct-label">Quiz + Assignment</span>
-            </div>
-          </div>
-          <div class="field">
-            <label>Final exam <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="math_final" min="0" max="40" step="0.1"
-              placeholder="e.g. 24.0"
-              value="{{ request.form.math_final or '' }}" required>
-            <span class="hint">0 if barred (abs &gt; 5)</span>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="field">
-            <label>Math absences <span style="color:var(--dim)">/14</span></label>
-            <input type="number" name="math_abs3" min="0" max="14" step="1"
-              placeholder="e.g. 3"
-              value="{{ request.form.math_abs3 or '' }}">
-          </div>
-        </div>
-      </div>
-
-      <!-- Science -->
-      <div class="subj-block">
-        <div class="subj-name">
-          <span class="subj-dot sci-dot"></span> Science
-        </div>
-        <div class="subj-row">
-          <div class="field">
-            <label>Quiz <span style="color:var(--dim)">/20</span></label>
-            <input type="number" name="sci_quiz" min="0" max="20" step="0.1"
-              placeholder="e.g. 15.0" id="sci_quiz"
-              value="{{ request.form.sci_quiz or '' }}"
-              oninput="updateCarry('sci')" required>
-          </div>
-          <div class="field">
-            <label>Assignment <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="sci_assn" min="0" max="40" step="0.1"
-              placeholder="e.g. 30.0" id="sci_assn"
-              value="{{ request.form.sci_assn or '' }}"
-              oninput="updateCarry('sci')" required>
-          </div>
-          <div class="field">
-            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
-            <div class="carry-total-preview" id="sci_carry_preview">
-              <span id="sci_carry_val">—</span>
-              <span class="ct-label">Quiz + Assignment</span>
-            </div>
-          </div>
-          <div class="field">
-            <label>Final exam <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="sci_final" min="0" max="40" step="0.1"
-              placeholder="e.g. 26.0"
-              value="{{ request.form.sci_final or '' }}" required>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="field">
-            <label>Science absences <span style="color:var(--dim)">/14</span></label>
-            <input type="number" name="sci_abs3" min="0" max="14" step="1"
-              placeholder="e.g. 3"
-              value="{{ request.form.sci_abs3 or '' }}">
-          </div>
-        </div>
-      </div>
-
-      <!-- English -->
-      <div class="subj-block">
-        <div class="subj-name">
-          <span class="subj-dot eng-dot"></span> English
-        </div>
-        <div class="subj-row">
-          <div class="field">
-            <label>Quiz <span style="color:var(--dim)">/20</span></label>
-            <input type="number" name="eng_quiz" min="0" max="20" step="0.1"
-              placeholder="e.g. 13.0" id="eng_quiz"
-              value="{{ request.form.eng_quiz or '' }}"
-              oninput="updateCarry('eng')" required>
-          </div>
-          <div class="field">
-            <label>Assignment <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="eng_assn" min="0" max="40" step="0.1"
-              placeholder="e.g. 26.0" id="eng_assn"
-              value="{{ request.form.eng_assn or '' }}"
-              oninput="updateCarry('eng')" required>
-          </div>
-          <div class="field">
-            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
-            <div class="carry-total-preview" id="eng_carry_preview">
-              <span id="eng_carry_val">—</span>
-              <span class="ct-label">Quiz + Assignment</span>
-            </div>
-          </div>
-          <div class="field">
-            <label>Final exam <span style="color:var(--dim)">/40</span></label>
-            <input type="number" name="eng_final" min="0" max="40" step="0.1"
-              placeholder="e.g. 22.0"
-              value="{{ request.form.eng_final or '' }}" required>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="field">
-            <label>English absences <span style="color:var(--dim)">/14</span></label>
-            <input type="number" name="eng_abs3" min="0" max="14" step="1"
-              placeholder="e.g. 4"
-              value="{{ request.form.eng_abs3 or '' }}">
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ══ STUDENT PROFILE ══ -->
-    <div class="fcard" style="animation-delay:.12s">
+    <div class="fcard" style="animation-delay:.04s">
       <div class="slabel">Student Profile</div>
       <div class="g2" style="margin-bottom:14px">
         <div class="field">
@@ -453,15 +282,191 @@ nav{height:56px;padding:0 22px;display:flex;align-items:center;justify-content:s
       </div>
     </div>
 
+    <!-- ══ PER-SUBJECT MARKS ══ -->
+    <div class="fcard" style="animation-delay:.08s">
+      <div class="slabel">Semester 3 — Per-Subject Carry Marks &amp; Final Exam</div>
+
+      <div class="info-strip" style="margin-top:0;margin-bottom:16px">
+        <span style="font-size:16px">&#9432;</span>
+        <span>
+          Each subject has <strong style="color:var(--ink)">its own</strong>
+          Quiz (/20) + Assignment (/40) = Carry Total (/60), plus a Final Exam (/40).
+          Total = Carry + Final (/100).
+          Pass: Carry &ge;30 (50%) and Final &ge;20 (50%), with no more than 5 absences.
+          Missing either 50% caps the grade at D.
+        </span>
+      </div>
+
+      <!-- Math -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot math-dot"></span> Mathematics
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="math_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 14.0" id="math_quiz"
+              value="{{ request.form.math_quiz or '' }}"
+              oninput="updateCarry('math')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="math_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 28.0" id="math_assn"
+              value="{{ request.form.math_assn or '' }}"
+              oninput="updateCarry('math')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="math_carry_preview">
+              <span id="math_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="math_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 24.0"
+              value="{{ request.form.math_final or '' }}" required>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>Math absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="math_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 3" id="math_abs3"
+              value="{{ request.form.math_abs3 or '' }}" required>
+            <span class="hint bar-warn" id="math_bar_warn" style="display:none">Barred: more than 5 absences, so the final exam counts as 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Science -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot sci-dot"></span> Science
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="sci_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 15.0" id="sci_quiz"
+              value="{{ request.form.sci_quiz or '' }}"
+              oninput="updateCarry('sci')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="sci_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 30.0" id="sci_assn"
+              value="{{ request.form.sci_assn or '' }}"
+              oninput="updateCarry('sci')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="sci_carry_preview">
+              <span id="sci_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="sci_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 26.0"
+              value="{{ request.form.sci_final or '' }}" required>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>Science absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="sci_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 3" id="sci_abs3"
+              value="{{ request.form.sci_abs3 or '' }}" required>
+            <span class="hint bar-warn" id="sci_bar_warn" style="display:none">Barred: more than 5 absences, so the final exam counts as 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- English -->
+      <div class="subj-block">
+        <div class="subj-name">
+          <span class="subj-dot eng-dot"></span> English
+        </div>
+        <div class="subj-row">
+          <div class="field">
+            <label>Quiz <span style="color:var(--dim)">/20</span></label>
+            <input type="number" name="eng_quiz" min="0" max="20" step="0.1"
+              placeholder="e.g. 13.0" id="eng_quiz"
+              value="{{ request.form.eng_quiz or '' }}"
+              oninput="updateCarry('eng')" required>
+          </div>
+          <div class="field">
+            <label>Assignment <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="eng_assn" min="0" max="40" step="0.1"
+              placeholder="e.g. 26.0" id="eng_assn"
+              value="{{ request.form.eng_assn or '' }}"
+              oninput="updateCarry('eng')" required>
+          </div>
+          <div class="field">
+            <label>Carry total <span style="color:var(--dim)">/60 (auto)</span></label>
+            <div class="carry-total-preview" id="eng_carry_preview">
+              <span id="eng_carry_val">—</span>
+              <span class="ct-label">Quiz + Assignment</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Final exam <span style="color:var(--dim)">/40</span></label>
+            <input type="number" name="eng_final" min="0" max="40" step="0.1"
+              placeholder="e.g. 22.0"
+              value="{{ request.form.eng_final or '' }}" required>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field">
+            <label>English absences <span style="color:var(--dim)">/14</span></label>
+            <input type="number" name="eng_abs3" min="0" max="14" step="1"
+              placeholder="e.g. 4" id="eng_abs3"
+              value="{{ request.form.eng_abs3 or '' }}" required>
+            <span class="hint bar-warn" id="eng_bar_warn" style="display:none">Barred: more than 5 absences, so the final exam counts as 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ATTENDANCE & CGPA (calculated) ══ -->
+    <div class="fcard" style="animation-delay:.12s">
+      <div class="slabel">Semester 3 — Attendance &amp; CGPA <span class="auto-pill">AUTO</span></div>
+      <div class="info-strip" style="margin-top:0;margin-bottom:16px">
+        <span style="font-size:16px">&#9432;</span>
+        <span>Calculated from the subject marks and absences above: attendance = classes attended out of 42,
+          CGPA = average grade point of the 3 subjects (minimum 1.50). IIUM barring threshold: 64.3%.</span>
+      </div>
+      <div class="g3">
+        <div class="field">
+          <label>Attendance %</label>
+          <div class="carry-total-preview"><span id="att3_val">—</span><span class="ct-label">(42 − absences) / 42</span></div>
+        </div>
+        <div class="field">
+          <label>Total absences</label>
+          <div class="carry-total-preview"><span id="abs3_val">—</span><span class="ct-label">out of 42 classes</span></div>
+        </div>
+        <div class="field">
+          <label>Sem 3 CGPA</label>
+          <div class="carry-total-preview"><span id="sem3_val">—</span><span class="ct-label">from subject grade points</span></div>
+        </div>
+      </div>
+      <div class="sem-stats" id="sem3_stats"></div>
+    </div>
+
     <!-- Submit -->
     <div class="submit-row">
       <button type="submit" class="btn-submit">&#9670; Predict Semester 4 Risk</button>
       <button type="button" class="btn-reset"
-        onclick="if(confirm('Clear all fields?')){document.getElementById('predictForm').reset();updateCarry('math');updateCarry('sci');updateCarry('eng');}">
+        onclick="if(confirm('Clear all fields?')){document.getElementById('predictForm').reset();refreshAll();}">
         Clear form
       </button>
       <span style="font-size:12px;color:var(--dim)">
-        Sem 3 model &bull; 85.6% accuracy &bull; Logged to admin live feed
+        Sem 3 model &bull; 83.0% test accuracy &bull; Logged to admin live feed
       </span>
     </div>
 
@@ -486,12 +491,51 @@ function updateCarry(subj) {
   // Colour code
   const c = parseFloat(carry);
   if (c >= 36)      { box.style.borderColor='rgba(0,200,83,0.3)';  valEl.style.color='var(--low)'; }
-  else if (c >= 24) { box.style.borderColor='rgba(255,179,71,0.3)'; valEl.style.color='var(--med)'; }
+  else if (c >= 30) { box.style.borderColor='rgba(255,179,71,0.3)'; valEl.style.color='var(--med)'; }
   else              { box.style.borderColor='rgba(255,77,109,0.3)'; valEl.style.color='var(--high)'; }
 }
 
-// Init carry previews if form was re-submitted with values
-['math','sci','eng'].forEach(s => updateCarry(s));
+// Attendance & CGPA preview. Mirrors derive_academic_summary() in app.py, which
+// recalculates the same values on submit.
+const GP_TABLE = [[80,4],[75,3.67],[70,3.33],[65,3],[60,2.67],[55,2.33],[50,2],[45,1.67],[40,1.33],[35,1],[0,0]];
+function roundHalfEven(x){const f=Math.floor(x),d=x-f;if(Math.abs(d-0.5)<1e-9)return f%2===0?f:f+1;return Math.round(x);}
+function gradePoint(total){const t=roundHalfEven(total);const row=GP_TABLE.find(([lo])=>t>=lo);return row?row[1]:0;}
+// Pass needs 50% of carry (30/60) and of the final (20/40) and no barring; missing either 50% caps the grade at D (1.67)
+function subjectOutcome(carry,fin,total,isBar){const below=isBar||carry<30||fin<20;const gp=gradePoint(total);return {point:below?Math.min(gp,1.67):gp,passed:!below&&!isBar};}
+function round1(x){return Math.round(x*10)/10;}
+function fieldVal(name){const v=document.querySelector(`[name="${name}"]`).value;return v===''?null:parseFloat(v);}
+
+function updateSummary() {
+  let any=false, points=[], absences=0, barred=0, failed=0;
+  ['math','sci','eng'].forEach(subj => {
+    const q=fieldVal(subj+'_quiz'), a=fieldVal(subj+'_assn'), f=fieldVal(subj+'_final'), ab=fieldVal(subj+'_abs3');
+    if ([q,a,f,ab].some(v => v!==null)) any=true;
+    const abs=Math.min(14,Math.max(0,Math.trunc(ab||0))), isBar=abs>5;
+    const carry=round1((q||0)+(a||0)), fin=isBar?0:(f||0), total=round1(carry+fin);
+    document.getElementById(subj+'_bar_warn').style.display = isBar ? '' : 'none';
+    const out=subjectOutcome(carry,fin,total,isBar);
+    points.push(out.point); absences+=abs; barred+=isBar?1:0;
+    failed+=out.passed?0:1;
+  });
+  const set=(id,text,color)=>{const el=document.getElementById(id);el.textContent=text;el.style.color=color||'';};
+  if (!any) {
+    ['att3_val','abs3_val','sem3_val'].forEach(id=>set(id,'—'));
+    document.getElementById('sem3_stats').innerHTML=''; return;
+  }
+  const att=round1((42-absences)/42*100);
+  const cgpa=Math.round(Math.min(4,Math.max(1.5,points.reduce((x,y)=>x+y,0)/3))*100)/100;
+  set('att3_val', att.toFixed(1)+'%', att<64.3?'var(--high)':att<75?'var(--med)':'var(--low)');
+  set('abs3_val', absences+' / 42', absences>=12?'var(--high)':absences>=8?'var(--med)':'var(--low)');
+  set('sem3_val', cgpa.toFixed(2), cgpa<2.5?'var(--high)':cgpa<3?'var(--med)':'var(--low)');
+  document.getElementById('sem3_stats').innerHTML =
+    `<span>Barred subjects: <strong>${barred}</strong></span><span>Failed subjects: <strong>${failed}</strong></span>`;
+}
+
+function refreshAll(){ ['math','sci','eng'].forEach(s => updateCarry(s)); updateSummary(); }
+document.getElementById('predictForm').addEventListener('input', updateSummary);
+
+// Init previews if form was re-submitted with values
+refreshAll();
 </script>
 </body>
 </html>

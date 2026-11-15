@@ -6,3 +6,6 @@ uploads/
 outputs/*
 !outputs/predictions.csv
 !outputs/predictions_sem3.csv
+
+# local copies made before data/model changes
+backups/

@@ -54,10 +54,10 @@ body{min-height:100vh;display:flex;flex-direction:column}
 .upload-panel{display:grid;grid-template-columns:1.2fr .7fr .7fr auto;gap:10px;align-items:end;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
 .upload-panel label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
 .upload-panel input,.upload-panel select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--snow);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px}
-.section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px}
+.section-grid{margin-bottom:14px}
 .section-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm)}
 .section-card.active{border-color:rgba(124,58,237,.45);box-shadow:0 0 0 3px rgba(124,58,237,.08)}
-.section-name{font-weight:800;font-size:15px;color:var(--ink);margin-bottom:8px}
+.section-name{font-weight:800;font-size:15px;color:var(--ink);margin-bottom:12px}
 .section-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
 .section-meta span{padding:4px 7px;border-radius:999px;background:var(--snow);border:1px solid var(--border)}
 .notice-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
@@ -212,6 +212,10 @@ tr:hover td{background:rgba(124,58,237,0.02)}
 .m-field label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:5px}
 .m-field input,.m-field select{width:100%;padding:8px 10px;background:var(--snow);border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--ink);outline:none;font-family:'Plus Jakarta Sans',sans-serif;transition:border-color .15s;font-weight:500}
 .m-field input:focus,.m-field select:focus{border-color:var(--violet);box-shadow:0 0 0 2px rgba(124,58,237,0.08)}
+.m-field input[readonly]{background:var(--paper);color:var(--ink2);cursor:default;border-style:dashed}
+.m-field input[readonly]:focus{border-color:var(--border);box-shadow:none}
+.auto-tag{display:inline-block;margin-left:4px;padding:0 5px;border-radius:4px;background:var(--teal-lt);color:var(--teal);font-size:8px;letter-spacing:.5px}
+.m-hint{font-size:11px;color:var(--muted);margin:-4px 0 10px}
 .m-subj-block{border:1px solid var(--border);border-radius:9px;padding:12px 14px;background:var(--snow)}
 .m-subj-head{font-size:12px;font-weight:700;color:var(--violet);margin-bottom:8px;font-family:'DM Mono',monospace}
 .m-subj-grid{display:grid;grid-template-columns:1fr repeat(4,minmax(68px,1fr));gap:8px;align-items:end}
@@ -233,6 +237,26 @@ tr:hover td{background:rgba(124,58,237,0.02)}
 .tbl-edit-btn:hover{background:var(--violet-md)}
 .tbl-del-btn{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--high-border);background:var(--high-lt);color:var(--high);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
 .tbl-del-btn:hover{background:#FECACA}
+
+/* Interventions + lecturer admin */
+.tbl-note-btn{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--info-border);background:var(--info-lt);color:var(--blue);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;margin-right:5px}
+.tbl-note-btn:hover{background:var(--blue-lt)}
+.m-field textarea{width:100%;min-height:84px;padding:8px 10px;background:var(--snow);border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--ink);outline:none;font-family:'Plus Jakarta Sans',sans-serif;resize:vertical}
+.m-field textarea:focus{border-color:var(--violet)}
+.m-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.iv-item{border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px;background:var(--snow)}
+.iv-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}
+.iv-notes{font-size:13px;color:var(--ink2);margin-top:6px;white-space:pre-wrap;word-break:break-word}
+.iv-meta{font-size:11px;color:var(--dim);margin-top:4px}
+.mini-select{padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:11px;font-family:'Plus Jakarta Sans',sans-serif}
+.overdue{color:var(--high);font-weight:700}
+.admin-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end;margin-bottom:12px}
+.admin-form label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.admin-form input{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--snow);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px}
+.inline-msg{display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500}
+.inline-msg.ok{display:block;background:var(--low-lt);border:1px solid var(--low-border);color:var(--low)}
+.inline-msg.err{display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high)}
+@media (max-width:900px){.admin-form,.m-grid3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -248,7 +272,7 @@ tr:hover td{background:rgba(124,58,237,0.02)}
   <div class="live-pill"><span class="live-dot"></span>Live</div>
   <div class="tb-right">
     {% if is_lecturer and sections %}
-    <select class="section-select" onchange="location.href='/lecturer/switch-section/'+this.value">
+    <select class="section-select" onchange="location.href='/lecturer/switch-section/'+this.value+'?tab='+encodeURIComponent(location.hash.slice(1))">
       {% for section in sections %}
       <option value="{{ section.id }}" {% if active_section and section.id == active_section.id %}selected{% endif %}>{{ section.section_name }} - Sem {{ section.current_semester }}</option>
       {% endfor %}
@@ -278,7 +302,15 @@ tr:hover td{background:rgba(124,58,237,0.02)}
       <span class="sb-badge" id="high-risk-badge">…</span>
     </button>
     {% endif %}
+    <button class="sb-link" onclick="showSection('interventions',this)">
+      <span class="sb-icon">✎</span>Interventions
+      <span class="sb-badge" id="open-cases-badge" style="display:none"></span>
+    </button>
     <button class="sb-link" onclick="showSection('live',this)"><span class="sb-icon">●</span>Live predictions</button>
+    {% if not is_lecturer %}
+    <div class="sb-section">Administration</div>
+    <button class="sb-link" onclick="showSection('lecturers',this)"><span class="sb-icon">☰</span>Lecturers &amp; sections</button>
+    {% endif %}
     <a href="/predict" class="sb-new"><span>◇</span>New prediction</a>
     <div class="sb-footer">
       <div class="sb-footer-text">Dataset:<br><span>outputs/predictions.csv</span></div>
@@ -386,7 +418,11 @@ tr:hover td{background:rgba(124,58,237,0.02)}
       </div>
       <div class="section-grid" id="sectionCards"></div>
       <div class="chart-card cc-r">
-        <div class="card-hd"><div class="card-title">Early warning notifications</div><div class="card-sub">Risk-level increases queued for student email/push follow-up</div></div>
+        <div class="card-hd" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+          <div><div class="card-title">Early warning notifications</div><div class="card-sub" id="notificationSub">Students are emailed when their risk level increases</div></div>
+          <button class="btn-action btn-ghost" id="retryNoticesBtn" onclick="retryNotifications()" style="display:none">↻ Retry failed</button>
+        </div>
+        <div id="noticeMsg" class="inline-msg"></div>
         <div id="notificationList"><div class="tbl-empty">No notifications yet.</div></div>
       </div>
     </div>
@@ -406,7 +442,7 @@ tr:hover td{background:rgba(124,58,237,0.02)}
       <div class="toolbar">
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
-          <input class="search-input" id="studentSearch" type="text" placeholder="Search ID, gender, ethnicity…" oninput="debounceSearch()">
+          <input class="search-input" id="studentSearch" type="text" placeholder="Search ID, name, email, gender, ethnicity…" oninput="debounceSearch()">
         </div>
         <button class="flt-btn active" onclick="setFilter('all',this)">All</button>
         <button class="flt-btn fh" onclick="setFilter('High Risk',this)">High risk</button>
@@ -416,8 +452,8 @@ tr:hover td{background:rgba(124,58,237,0.02)}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Student ID</th><th>Gender</th><th>Ethnicity</th><th>Attendance</th><th>Avg CGPA</th><th>Prediction</th><th>Risk level</th><th>Risk probability</th><th>Actions</th></tr></thead>
-          <tbody id="studentTbody"><tr><td colspan="9" class="tbl-empty">Loading…</td></tr></tbody>
+          <thead><tr><th>Student ID</th><th>Name</th><th>Gender</th><th>Ethnicity</th><th>Attendance</th><th>Avg CGPA</th><th>Prediction</th><th>Risk level</th><th>Risk probability</th><th>Actions</th></tr></thead>
+          <tbody id="studentTbody"><tr><td colspan="10" class="tbl-empty">Loading…</td></tr></tbody>
         </table>
         <div class="pagination">
           <span class="pg-info" id="pg-info"></span>
@@ -429,9 +465,56 @@ tr:hover td{background:rgba(124,58,237,0.02)}
 
     {% endif %}
 
+    <!-- ═══ INTERVENTIONS ═══ -->
+    <div id="sec-interventions" class="section">
+      <div class="tbl-head-row">
+        <div><div class="page-title">Interventions</div><div class="page-sub">Follow-up actions logged for {% if is_lecturer %}students in your sections{% else %}all students{% endif %}. Overdue follow-ups are shown in red.</div></div>
+        <div class="act-btns">
+          <button class="flt-btn iv-flt active" onclick="setIvFilter('open',this)">Open cases</button>
+          <button class="flt-btn iv-flt" onclick="setIvFilter('all',this)">All</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Risk</th><th>Action</th><th>Notes</th><th>Follow-up</th><th>Status</th><th>Logged by</th></tr></thead>
+          <tbody id="ivTbody"><tr><td colspan="7" class="tbl-empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if not is_lecturer %}
+    <!-- ═══ LECTURERS (admin) ═══ -->
+    <div id="sec-lecturers" class="section">
+      <div class="page-hd"><div class="page-title">Lecturers &amp; Sections</div><div class="page-sub">Create lecturer accounts, reset passwords, deactivate accounts, and assign class sections.</div></div>
+      <div class="chart-card cc-v" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">Add lecturer</div><div class="card-sub">Password must be at least 8 characters</div></div>
+        <form class="admin-form" id="lecturerForm">
+          <div><label>Full name</label><input name="full_name" required></div>
+          <div><label>Username</label><input name="username" required autocomplete="off"></div>
+          <div><label>Email</label><input name="email" type="email"></div>
+          <div><label>Password</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div>
+          <button class="btn-action btn-prim" type="submit">+ Create</button>
+        </form>
+        <div id="lecturerMsg" class="inline-msg"></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:14px">
+        <table>
+          <thead><tr><th>Lecturer</th><th>Username</th><th>Email</th><th>Sections</th><th>Students</th><th>At-risk</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="lecturerTbody"><tr><td colspan="8" class="tbl-empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Section</th><th>Semester</th><th>Students</th><th>Assigned lecturer</th></tr></thead>
+          <tbody id="adminSectionTbody"><tr><td colspan="4" class="tbl-empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- ═══ LIVE FEED ═══ -->
     <div id="sec-live" class="section">
-      <div class="page-hd"><div class="page-title">Live Predictions</div><div class="page-sub">Real-time log of predictions submitted through the student portal. Auto-refreshes every 30 seconds.</div></div>
+      <div class="page-hd"><div class="page-title">Live Predictions</div><div class="page-sub">Real-time log of predictions {% if is_lecturer %}you have run{% else %}run by all staff{% endif %}. Auto-refreshes every 30 seconds.</div></div>
       <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
         <div class="kpi kv-b"><div class="kpi-top"><div class="kpi-label">Total submissions</div><div class="kpi-icon ki-b">📋</div></div><div class="kpi-val kc" id="lv-total">—</div></div>
         <div class="kpi kv-r"><div class="kpi-top"><div class="kpi-label">At-risk submitted</div><div class="kpi-icon ki-r">⚠</div></div><div class="kpi-val kd" id="lv-atrisk">—</div></div>
@@ -466,6 +549,8 @@ tr:hover td{background:rgba(124,58,237,0.02)}
           <label>Student ID <span style="color:var(--high)">*</span> <span style="text-transform:none;letter-spacing:0;color:var(--dim);font-weight:400;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px">(existing range: 1001 to {{ stats.current_student_id }})</span></label>
           <input id="add_id" type="text" placeholder="e.g. 2001">
         </div>
+        <div class="m-field" style="grid-column:span 2"><label>Full name</label><input id="add_name" type="text" maxlength="100" placeholder="e.g. Nur Aisyah binti Rahman"></div>
+        <div class="m-field" style="grid-column:span 2"><label>Email <span style="text-transform:none;letter-spacing:0;color:var(--dim);font-weight:400;font-size:10px">(used for risk alerts)</span></label><input id="add_email" type="email" maxlength="120" placeholder="student@example.com"></div>
         {% for label, fid, placeholder, opts in [
           ('Gender','add_gender','Select',['Male','Female']),('Ethnicity','add_ethnicity','Select',['Malay','Chinese','Indian','Bumiputera Sabah/Sarawak']),
           ('Age','add_age','e.g. 20',[]),('Parental Education','add_edu','Select',["No Formal Education","Primary School (UPSR)","Secondary School (SPM)","Diploma","Bachelor's Degree","Master's Degree","PhD"]),
@@ -480,6 +565,8 @@ tr:hover td{background:rgba(124,58,237,0.02)}
         {% endfor %}
       </div>
       <div class="m-sect">Academic Summary</div>
+      <div class="m-hint">Fields marked <span class="auto-tag">AUTO</span> are calculated from the subject marks and absences below. A semester left completely blank is skipped.</div>
+      {% set auto_fields = ['add_sem1_cgpa','add_sem2_cgpa','add_sem3_cgpa','add_avg_cgpa','add_sem1_att','add_sem2_att','add_sem3_att','add_overall_att','add_att_trend','add_sem1_barred','add_sem2_barred','add_sem3_barred','add_total_barred','add_total_failed'] %}
       <div class="m-grid4">
         {% for label, fid, placeholder, opts in [
           ('Sem 1 CGPA','add_sem1_cgpa','0.00',[]),('Sem 2 CGPA','add_sem2_cgpa','0.00',[]),('Sem 3 CGPA','add_sem3_cgpa','0.00',[]),('Average CGPA','add_avg_cgpa','0.00',[]),
@@ -488,13 +575,15 @@ tr:hover td{background:rgba(124,58,237,0.02)}
           ('Total Barred','add_total_barred','0',[]),('Total Failed','add_total_failed','0',[]),('Risk Probability %','add_risk_probability','0',[]),
           ('Prediction','add_prediction_label','Select',['Safe','At-Risk']),('Risk Level','add_risk_level','Select',['Low Risk','Medium Risk','High Risk']),
         ] %}
-        <div class="m-field"><label>{{ label }}</label>
+        <div class="m-field"><label>{{ label }}{% if fid in auto_fields %}<span class="auto-tag">AUTO</span>{% endif %}</label>
           {% if opts %}<select id="{{ fid }}"><option value="">— {{ placeholder }} —</option>{% for o in opts %}<option value="{{ o }}">{{ o }}</option>{% endfor %}</select>
+          {% elif fid in auto_fields %}<input id="{{ fid }}" type="number" readonly tabindex="-1" placeholder="—">
           {% else %}<input id="{{ fid }}" type="number" step="0.01" min="0" placeholder="{{ placeholder }}">{% endif %}
         </div>
         {% endfor %}
       </div>
       <div class="m-sect">Subject Marks &amp; Attendance</div>
+      <div class="m-hint">Pass a subject with at least 30/60 carry marks and 20/40 in the final exam. Missing either caps the grade at D. More than 5 absences bars the student from the final exam (counted as 0).</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         {% for sem in [1,2,3] %}
         <div class="m-subj-block">
@@ -518,6 +607,30 @@ tr:hover td{background:rgba(124,58,237,0.02)}
     <div class="modal-foot">
       <button class="btn-modal-cancel" onclick="closeAddModal()">Cancel</button>
       <button class="btn-modal-submit" onclick="submitAddStudent()" id="addSubmitBtn">Add student</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTERVENTIONS MODAL -->
+<div id="ivModal" class="modal-backdrop">
+  <div class="modal-box" style="max-width:720px">
+    <div class="modal-stripe"></div>
+    <div class="modal-head">
+      <div><div class="modal-title" id="ivModalTitle">Interventions</div><div class="modal-sub" id="ivModalSub"></div></div>
+      <button class="modal-close" onclick="closeIvModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="ivModalError" class="m-feedback m-err"></div>
+      <div class="m-sect">Log a new action</div>
+      <div class="m-grid3">
+        <div class="m-field"><label>Action type</label><select id="iv_type"></select></div>
+        <div class="m-field"><label>Status</label><select id="iv_status"></select></div>
+        <div class="m-field"><label>Follow-up date</label><input id="iv_follow" type="date"></div>
+      </div>
+      <div class="m-field" style="margin-top:10px"><label>Notes</label><textarea id="iv_notes" maxlength="4000" placeholder="What was discussed, agreed actions, referrals made…"></textarea></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-modal-submit" id="ivSaveBtn" onclick="saveIntervention()">Save action</button></div>
+      <div class="m-sect">History</div>
+      <div id="ivHistory"><div class="tbl-empty">Loading…</div></div>
     </div>
   </div>
 </div>
@@ -610,6 +723,12 @@ function rBadge(l){if(l==='High Risk')return`<span class="badge bh">High</span>`
 function pBadge(p){return p==='At-Risk'?`<span class="badge br">At-Risk</span>`:`<span class="badge bs">Safe</span>`;}
 function probCell(prob){const c=prob>=70?'#DC2626':prob>=40?'#D97706':'#059669';return`<div class="prob-cell"><div class="prob-bar"><div class="prob-fill" style="width:${prob}%;background:${c}"></div></div><span class="prob-txt">${prob}%</span></div>`;}
 
+// Refresh whichever student list this dashboard has (admin table or lecturer section)
+function reloadStudentViews(){
+  if(document.getElementById('studentTbody'))loadStudents();
+  if(document.getElementById('sectionCards'))loadSections();
+}
+
 async function loadStudents(){
   const search=document.getElementById('studentSearch').value.trim();
   const params=new URLSearchParams({search,risk:curRisk,page:curPage});
@@ -620,13 +739,14 @@ async function loadStudents(){
   document.getElementById('pg-prev').disabled=data.page<=1;
   document.getElementById('pg-next').disabled=data.page>=total;
   const tbody=document.getElementById('studentTbody');
-  if(!data.students.length){tbody.innerHTML=`<tr><td colspan="9" class="tbl-empty">No students found.</td></tr>`;return;}
+  if(!data.students.length){tbody.innerHTML=`<tr><td colspan="10" class="tbl-empty">No students found.</td></tr>`;return;}
   tbody.innerHTML=data.students.map(s=>`<tr>
     <td><a class="id-link" href="/dashboard/${s.id}">#${s.id}</a></td>
+    <td style="font-weight:600">${esc(s.name)||'-'}${s.email?`<div class="iv-meta">${esc(s.email)}</div>`:''}</td>
     <td>${s.gender}</td><td>${s.ethnicity}</td><td>${s.attendance}%</td>
     <td style="font-weight:700">${s.avg_cgpa}</td>
     <td>${pBadge(s.prediction)}</td><td>${rBadge(s.risk_level)}</td><td>${probCell(s.risk_prob)}</td>
-    <td><button class="tbl-edit-btn" onclick="openEditModal('${s.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${s.id}')">🗑</button></td>
+    <td><button class="tbl-note-btn" onclick="openIvModal('${s.id}')">Notes</button><button class="tbl-edit-btn" onclick="openEditModal('${s.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${s.id}')">🗑</button></td>
   </tr>`).join('');
 }
 
@@ -651,8 +771,10 @@ function showSection(name,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.sb-link').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');btn.classList.add('active');
+  history.replaceState(null,'','#'+name);   // remembered across section switches and refreshes
   if(name==='academic')loadAcademic();if(name==='demographics')loadDemographics();
   if(name==='students')loadStudents();if(name==='live')loadLive();if(name==='classes')loadSections();
+  if(name==='interventions')loadInterventions();if(name==='lecturers')loadLecturers();
 }
 
 async function refreshSection(btn){
@@ -660,43 +782,189 @@ async function refreshSection(btn){
   try{const active=document.querySelector('.section.active').id.replace('sec-','');
     if(active==='overview')await loadOverview();if(active==='academic')await loadAcademic();
     if(active==='demographics')await loadDemographics();if(active==='students')await loadStudents();if(active==='live')await loadLive();if(active==='classes')await loadSections();
+    if(active==='interventions')await loadInterventions();if(active==='lecturers')await loadLecturers();
   }finally{icon.classList.remove('spinning');btn.disabled=false;}
 }
 
 setInterval(()=>{if(document.getElementById('sec-live').classList.contains('active'))loadLive();},30000);
 loadOverview();
 
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function postJSON(url,body){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});return res.json();}
+
+// INTERVENTIONS
+let ivShow='open';
+function setIvFilter(show,btn){ivShow=show;document.querySelectorAll('.iv-flt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadInterventions();}
+function ivStatusSelect(i,statuses){return`<select class="mini-select" onchange="updateIvStatus(${i.id},this.value)">${statuses.map(st=>`<option ${st===i.status?'selected':''}>${st}</option>`).join('')}</select>`;}
+
+async function loadInterventions(){
+  const data=await fetch('/api/interventions?show='+ivShow).then(r=>r.json());
+  const badge=document.getElementById('open-cases-badge');
+  badge.textContent=data.open_count;badge.style.display=data.open_count?'':'none';
+  const tbody=document.getElementById('ivTbody');
+  if(!data.interventions.length){tbody.innerHTML=`<tr><td colspan="7" class="tbl-empty">${ivShow==='open'?'No open cases. Use the Notes button on a student to log an action.':'No interventions logged yet.'}</td></tr>`;return;}
+  tbody.innerHTML=data.interventions.map(i=>`<tr>
+    <td><a class="id-link" href="#" onclick="openIvModal('${esc(i.student_id)}');return false">#${esc(i.student_id)}</a>${i.student_name?`<div class="iv-meta">${esc(i.student_name)}</div>`:''}</td>
+    <td>${i.risk_level?rBadge(i.risk_level):'-'}</td>
+    <td style="font-weight:600">${esc(i.action_type)}</td>
+    <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(i.notes)}">${esc(i.notes)}</td>
+    <td class="${i.overdue?'overdue':''}">${i.follow_up_date?esc(i.follow_up_date)+(i.overdue?' (overdue)':''):'-'}</td>
+    <td>${ivStatusSelect(i,data.statuses)}</td>
+    <td>${esc(i.created_by)}<div class="iv-meta">${i.created_at}</div></td>
+  </tr>`).join('');
+}
+loadInterventions();
+
+async function updateIvStatus(id,status){
+  const data=await postJSON(`/api/interventions/${id}`,{status});
+  if(!data.success){alert(data.error);}
+  loadInterventions();
+  if(document.getElementById('ivModal').classList.contains('open'))loadIvHistory();
+}
+
+let _ivStudent=null;
+function renderIvHistory(data){
+  const box=document.getElementById('ivHistory');
+  if(!data.interventions.length){box.innerHTML='<div class="tbl-empty">No actions logged for this student yet.</div>';return;}
+  box.innerHTML=data.interventions.map(i=>`<div class="iv-item">
+    <div class="iv-top"><strong>${esc(i.action_type)}</strong>${ivStatusSelect(i,data.statuses)}</div>
+    <div class="iv-notes">${esc(i.notes)}</div>
+    <div class="iv-meta">${esc(i.created_by)} (${esc(i.created_by_role)}) · ${i.created_at}${i.follow_up_date?` · follow up <span class="${i.overdue?'overdue':''}">${esc(i.follow_up_date)}</span>`:''}</div>
+  </div>`).join('');
+}
+async function loadIvHistory(){
+  const data=await fetch(`/api/students/${encodeURIComponent(_ivStudent)}/interventions`).then(r=>r.json());
+  if(!data.success)throw new Error(data.error||'Unable to load interventions.');
+  const today=new Date().toISOString().slice(0,10);
+  data.interventions.forEach(i=>{i.overdue=i.follow_up_date&&i.follow_up_date<today&&i.status!=='Resolved';});
+  document.getElementById('ivModalSub').textContent=[data.student_name,data.student_email,
+    data.risk_level?`Current risk: ${data.risk_level} (${data.risk_prob}%)`:''].filter(Boolean).join(' · ');
+  const typeSel=document.getElementById('iv_type');
+  if(!typeSel.options.length){typeSel.innerHTML=data.types.map(t=>`<option>${t}</option>`).join('');
+    document.getElementById('iv_status').innerHTML=data.statuses.map(t=>`<option>${t}</option>`).join('');}
+  renderIvHistory(data);
+}
+async function openIvModal(id){
+  _ivStudent=id;
+  document.getElementById('ivModalTitle').textContent=`Interventions · Student #${id}`;
+  document.getElementById('ivModalError').style.display='none';
+  document.getElementById('iv_notes').value='';document.getElementById('iv_follow').value='';
+  document.getElementById('ivHistory').innerHTML='<div class="tbl-empty">Loading…</div>';
+  document.getElementById('ivModal').classList.add('open');
+  try{await loadIvHistory();}
+  catch(e){const eb=document.getElementById('ivModalError');eb.textContent=e.message;eb.style.display='block';}
+}
+function closeIvModal(){document.getElementById('ivModal').classList.remove('open');_ivStudent=null;}
+async function saveIntervention(){
+  const btn=document.getElementById('ivSaveBtn'),eb=document.getElementById('ivModalError');eb.style.display='none';
+  btn.disabled=true;btn.textContent='Saving…';
+  try{const data=await postJSON(`/api/students/${encodeURIComponent(_ivStudent)}/interventions`,{
+      action_type:document.getElementById('iv_type').value,status:document.getElementById('iv_status').value,
+      follow_up_date:document.getElementById('iv_follow').value,notes:document.getElementById('iv_notes').value});
+    if(!data.success)throw new Error(data.error);
+    document.getElementById('iv_notes').value='';document.getElementById('iv_follow').value='';
+    await loadIvHistory();loadInterventions();}
+  catch(e){eb.textContent=e.message||'Server error.';eb.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Save action';}
+}
+document.getElementById('ivModal').addEventListener('click',e=>{if(e.target===document.getElementById('ivModal'))closeIvModal();});
+
+{% if not is_lecturer %}
+// LECTURERS & SECTIONS (admin)
+function showMsg(id,ok,text){const el=document.getElementById(id);el.className='inline-msg '+(ok?'ok':'err');el.textContent=text;}
+
+async function loadLecturers(){
+  const [lec,sec]=await Promise.all([fetch('/api/admin/lecturers').then(r=>r.json()),fetch('/api/admin/sections').then(r=>r.json())]);
+  const lt=document.getElementById('lecturerTbody');
+  lt.innerHTML=lec.lecturers.length?lec.lecturers.map(l=>`<tr>
+    <td style="font-weight:600">${esc(l.full_name)}<div class="iv-meta">since ${l.created_at}</div></td>
+    <td>${esc(l.username)}</td><td>${esc(l.email)||'-'}</td>
+    <td>${l.sections}</td><td>${l.students}</td><td>${l.at_risk}</td>
+    <td>${l.is_active?'<span class="badge bs">Active</span>':'<span class="badge br">Inactive</span>'}</td>
+    <td style="white-space:nowrap"><button class="tbl-edit-btn" onclick="resetLecturerPassword(${l.id})">Reset password</button>
+      <button class="${l.is_active?'tbl-del-btn':'tbl-note-btn'}" onclick="setLecturerActive(${l.id},${!l.is_active})">${l.is_active?'Deactivate':'Activate'}</button></td>
+  </tr>`).join(''):'<tr><td colspan="8" class="tbl-empty">No lecturers yet.</td></tr>';
+  const opts=lec.lecturers.map(l=>({id:l.id,name:l.full_name+(l.is_active?'':' (inactive)')}));
+  const st=document.getElementById('adminSectionTbody');
+  st.innerHTML=sec.sections.length?sec.sections.map(s=>`<tr>
+    <td style="font-weight:600">${esc(s.name)}${s.archived?' <span class="badge bm">archived</span>':''}</td>
+    <td>Sem ${s.semester}</td><td>${s.students}</td>
+    <td><select class="mini-select" onchange="assignSection(${s.id},this.value)">${opts.map(o=>`<option value="${o.id}" ${o.id===s.lecturer_id?'selected':''}>${esc(o.name)}</option>`).join('')}</select></td>
+  </tr>`).join(''):'<tr><td colspan="4" class="tbl-empty">No class sections yet. Lecturers create sections by uploading a CSV.</td></tr>';
+}
+
+document.getElementById('lecturerForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const body=Object.fromEntries(new FormData(e.target).entries());
+  try{const data=await postJSON('/api/admin/lecturers',body);
+    showMsg('lecturerMsg',data.success,data.success?data.message:data.error);
+    if(data.success){e.target.reset();loadLecturers();}}
+  catch(err){showMsg('lecturerMsg',false,'Server error.');}
+});
+
+async function resetLecturerPassword(id){
+  const password=prompt('New password for this lecturer (min 8 characters):');
+  if(password===null)return;
+  const data=await postJSON(`/api/admin/lecturers/${id}/password`,{password});
+  showMsg('lecturerMsg',data.success,data.success?data.message:data.error);
+}
+
+async function setLecturerActive(id,isActive){
+  if(!isActive&&!confirm('Deactivate this lecturer? They will be signed out and unable to log in.'))return;
+  const data=await postJSON(`/api/admin/lecturers/${id}/status`,{is_active:isActive});
+  showMsg('lecturerMsg',data.success,data.success?data.message:data.error);
+  loadLecturers();
+}
+
+async function assignSection(sectionId,lecturerId){
+  const data=await postJSON(`/api/admin/sections/${sectionId}/assign`,{lecturer_id:lecturerId});
+  showMsg('lecturerMsg',data.success,data.success?data.message:data.error);
+  loadLecturers();
+}
+{% endif %}
+
 {% if is_lecturer %}
 async function loadSections(){
   const data=await fetch('/api/sections').then(r=>r.json());
   const box=document.getElementById('sectionCards');
-  if(!data.sections.length){box.innerHTML='<div class="tbl-empty">No class sections yet.</div>';}
-  else{box.innerHTML=data.sections.map(s=>`<div class="section-card ${s.active?'active':''}">
-    <div class="section-name">${s.name}</div>
-    <div class="section-meta">
-      <span>Sem ${s.semester}</span><span>${s.students} students</span><span>${s.at_risk} at-risk</span><span>Avg CGPA ${s.avg_cgpa}</span><span>${s.model}</span>
-    </div>
-    <div style="margin-top:12px"><a class="btn-action btn-ghost" href="/lecturer/switch-section/${s.id}">Switch Section</a></div>
-    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
-      ${s.student_rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr><th style="text-align:left;padding:6px;color:var(--dim)">Student</th><th style="text-align:left;padding:6px;color:var(--dim)">CGPA</th><th style="text-align:left;padding:6px;color:var(--dim)">Risk</th><th style="text-align:left;padding:6px;color:var(--dim)">Prob</th><th style="text-align:left;padding:6px;color:var(--dim)">Actions</th></tr></thead>
-        <tbody>${s.student_rows.map(st=>`<tr>
-          <td style="padding:7px 6px"><a class="id-link" href="/dashboard/${st.id}">#${st.id}</a></td>
-          <td style="padding:7px 6px;font-weight:700">${st.avg_cgpa}</td>
-          <td style="padding:7px 6px">${rBadge(st.risk_level)}</td>
-          <td style="padding:7px 6px">${st.risk_prob}%</td>
-          <td style="padding:7px 6px"><button class="tbl-edit-btn" onclick="openEditModal('${st.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${st.id}')">Del</button></td>
-        </tr>`).join('')}</tbody>
-      </table>` : `<div class="tbl-empty">No students in this section yet.</div>`}
-    </div>
-  </div>`).join('');}
+  // Only the section picked in the top-right dropdown is shown
+  const s=data.sections.find(x=>x.active)||data.sections.find(x=>!x.archived);
+  if(!s){box.innerHTML='<div class="tbl-empty">No class sections yet. Upload a CSV above to create one.</div>';}
+  else{box.innerHTML=`<div class="section-card">
+    <div class="section-name">${esc(s.name)}</div>
+    ${s.student_rows.length ? `<table>
+      <thead><tr><th>Student</th><th>CGPA</th><th>Risk</th><th>Probability</th><th>Actions</th></tr></thead>
+      <tbody>${s.student_rows.map(st=>`<tr>
+        <td><a class="id-link" href="/dashboard/${st.id}">#${st.id}</a>${st.name?`<div class="iv-meta">${esc(st.name)}</div>`:''}</td>
+        <td style="font-weight:700">${st.avg_cgpa}</td>
+        <td>${rBadge(st.risk_level)}</td>
+        <td>${probCell(st.risk_prob)}</td>
+        <td style="white-space:nowrap"><button class="tbl-note-btn" onclick="openIvModal('${st.id}')">Notes</button><button class="tbl-edit-btn" onclick="openEditModal('${st.id}')">Edit</button><button class="tbl-del-btn" onclick="openDeleteModal('${st.id}')">Del</button></td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<div class="tbl-empty">No students in this section yet.</div>`}
+  </div>`;}
   const notices=await fetch('/api/notifications').then(r=>r.json());
   const list=document.getElementById('notificationList');
+  document.getElementById('notificationSub').textContent=notices.email_enabled
+    ?'Students are emailed automatically when their risk level increases'
+    :'Email is not configured on the server (set SMTP_HOST / SMTP_FROM). Changes are logged only.';
+  document.getElementById('retryNoticesBtn').style.display=
+    notices.email_enabled&&notices.notifications.some(n=>n.status==='failed'||n.status==='not_configured')?'flex':'none';
   if(!notices.notifications.length){list.innerHTML='<div class="tbl-empty">No notifications yet.</div>';return;}
-  list.innerHTML=notices.notifications.map(n=>`<div class="notice-row">
-    <div><strong>#${n.student_id}</strong> ${n.old||'Unknown'} → ${n.new}<div class="card-sub">${n.created_at} · ${n.recipient}</div></div>
-    <span class="badge ${n.sent?'bs':'bm'}">${n.sent?'Queued':'No email'}</span>
-  </div>`).join('');
+  list.innerHTML=notices.notifications.map(n=>{const [cls,label]=NOTICE_STATUS[n.status]||['bm',n.status];return`<div class="notice-row">
+    <div><strong>#${esc(n.student_id)}</strong> ${esc(n.old||'Unknown')} → ${esc(n.new)}<div class="card-sub">${n.created_at} · ${esc(n.recipient)}${n.sent_at?' · sent '+n.sent_at:''}</div></div>
+    <span class="badge ${cls}">${label}</span>
+  </div>`;}).join('');
+}
+
+const NOTICE_STATUS={sent:['bs','Sent'],pending:['bm','Sending…'],failed:['br','Failed'],no_email:['bm','No email'],not_configured:['bm','Email off'],not_sent:['bm','Not sent']};
+
+async function retryNotifications(){
+  const box=document.getElementById('noticeMsg');
+  try{const data=await fetch('/api/notifications/retry',{method:'POST'}).then(r=>r.json());
+    box.className='inline-msg '+(data.success?'ok':'err');box.textContent=data.success?data.message:data.error;
+    setTimeout(loadSections,2500);}
+  catch(e){box.className='inline-msg err';box.textContent='Server error.';}
 }
 
 document.getElementById('sectionUploadForm')?.addEventListener('submit',async e=>{
@@ -712,12 +980,51 @@ document.getElementById('sectionUploadForm')?.addEventListener('submit',async e=
 {% endif %}
 
 // STUDENT FORM
-const STUDENT_FIELD_MAP={student_id:'add_id',Gender:'add_gender',Ethnicity:'add_ethnicity',Age:'add_age',ParentalEducation:'add_edu',StudyTimeWeekly:'add_study_hours',StudyMethod:'add_method',Tutoring:'add_tutoring',Extracurricular:'add_extracurricular',Sports:'add_sports',Music:'add_music',Volunteering:'add_volunteering',Sem1_CGPA:'add_sem1_cgpa',Sem2_CGPA:'add_sem2_cgpa',Sem3_CGPA:'add_sem3_cgpa',AvgCGPA:'add_avg_cgpa',Sem1_AttendancePct:'add_sem1_att',Sem2_AttendancePct:'add_sem2_att',Sem3_AttendancePct:'add_sem3_att',OverallAttendancePct:'add_overall_att',AttendanceTrend:'add_att_trend',Sem1_BarredSubjects:'add_sem1_barred',Sem2_BarredSubjects:'add_sem2_barred',Sem3_BarredSubjects:'add_sem3_barred',TotalBarredSubjects:'add_total_barred',TotalFailedSubjects:'add_total_failed',RiskProbability:'add_risk_probability',PredictionLabel:'add_prediction_label',RiskLevel:'add_risk_level'};
+const STUDENT_FIELD_MAP={student_id:'add_id',FullName:'add_name',Email:'add_email',Gender:'add_gender',Ethnicity:'add_ethnicity',Age:'add_age',ParentalEducation:'add_edu',StudyTimeWeekly:'add_study_hours',StudyMethod:'add_method',Tutoring:'add_tutoring',Extracurricular:'add_extracurricular',Sports:'add_sports',Music:'add_music',Volunteering:'add_volunteering',Sem1_CGPA:'add_sem1_cgpa',Sem2_CGPA:'add_sem2_cgpa',Sem3_CGPA:'add_sem3_cgpa',AvgCGPA:'add_avg_cgpa',Sem1_AttendancePct:'add_sem1_att',Sem2_AttendancePct:'add_sem2_att',Sem3_AttendancePct:'add_sem3_att',OverallAttendancePct:'add_overall_att',AttendanceTrend:'add_att_trend',Sem1_BarredSubjects:'add_sem1_barred',Sem2_BarredSubjects:'add_sem2_barred',Sem3_BarredSubjects:'add_sem3_barred',TotalBarredSubjects:'add_total_barred',TotalFailedSubjects:'add_total_failed',RiskProbability:'add_risk_probability',PredictionLabel:'add_prediction_label',RiskLevel:'add_risk_level'};
 ['Math','Science','English'].forEach(subject=>{const lower=subject.toLowerCase();[1,2,3].forEach(sem=>{STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Quiz`]=`add_sem${sem}_${lower}_quiz`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Assignment`]=`add_sem${sem}_${lower}_assignment`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_FinalExam`]=`add_sem${sem}_${lower}_final`;STUDENT_FIELD_MAP[`Sem${sem}_${subject}_Absences`]=`add_sem${sem}_${lower}_absences`;});});
 
 function clearStudentForm(){Object.values(STUDENT_FIELD_MAP).forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('add_id').disabled=false;}
-function collectStudentPayload(){const p={};Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&el.value!=='')p[k]=el.value;});return p;}
-function fillStudentForm(student){Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=student[k]??'';});}
+function collectStudentPayload(){const p={};Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el&&el.value!==''&&!el.readOnly)p[k]=el.value;});return p;}
+function fillStudentForm(student){Object.entries(STUDENT_FIELD_MAP).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=student[k]??'';});recomputeSummary();}
+
+// Live preview of the auto-calculated summary. Mirrors derive_academic_summary() in app.py,
+// which recalculates everything again on save.
+const GP_TABLE=[[80,4],[75,3.67],[70,3.33],[65,3],[60,2.67],[55,2.33],[50,2],[45,1.67],[40,1.33],[35,1],[0,0]];
+function roundHalfEven(x){const f=Math.floor(x),d=x-f;if(Math.abs(d-0.5)<1e-9)return f%2===0?f:f+1;return Math.round(x);}
+function gradePoint(total){const t=roundHalfEven(total);const row=GP_TABLE.find(([lo])=>t>=lo);return row?row[1]:0;}
+// Pass needs 50% of carry (30/60) and of the final (20/40) and no barring; missing either 50% caps the grade at D (1.67)
+function subjectOutcome(carry,fin,total,isBar){const below=isBar||carry<30||fin<20;const gp=gradePoint(total);return {point:below?Math.min(gp,1.67):gp,passed:!below&&!isBar};}
+function round1(x){return Math.round(x*10)/10;}
+function round2(x){return Math.round(x*100)/100;}
+function recomputeSummary(){
+  const num=id=>{const v=document.getElementById(id).value;return v===''?null:parseFloat(v);};
+  const set=(id,v)=>{document.getElementById(id).value=v===null||v===undefined?'':v;};
+  const sems=[],res={};
+  [1,2,3].forEach(sem=>{
+    let any=false,points=[],abs=0,barred=0,failed=0;
+    ['math','science','english'].forEach(sub=>{
+      const p=`add_sem${sem}_${sub}_`;
+      const q=num(p+'quiz'),a=num(p+'assignment'),f=num(p+'final'),ab=num(p+'absences');
+      if([q,a,f,ab].some(v=>v!==null))any=true;
+      const absences=Math.min(14,Math.max(0,Math.trunc(ab||0))),isBar=absences>5;
+      const carry=round1((q||0)+(a||0)),fin=isBar?0:(f||0),total=round1(carry+fin);
+      const out=subjectOutcome(carry,fin,total,isBar);
+      points.push(out.point);abs+=absences;barred+=isBar?1:0;
+      failed+=out.passed?0:1;
+    });
+    if(!any){['cgpa','att','barred'].forEach(k=>set(`add_sem${sem}_${k}`,null));return;}
+    sems.push(sem);
+    res[sem]={cgpa:round2(Math.min(4,Math.max(1.5,points.reduce((x,y)=>x+y,0)/3))),att:round1((42-abs)/42*100),abs,barred,failed};
+    set(`add_sem${sem}_cgpa`,res[sem].cgpa.toFixed(2));set(`add_sem${sem}_att`,res[sem].att.toFixed(1));set(`add_sem${sem}_barred`,barred);
+  });
+  if(!sems.length){['add_avg_cgpa','add_overall_att','add_att_trend','add_total_barred','add_total_failed'].forEach(id=>set(id,null));return;}
+  const sum=k=>sems.reduce((x,s)=>x+res[s][k],0);
+  set('add_avg_cgpa',round2(sum('cgpa')/sems.length).toFixed(2));
+  set('add_overall_att',round1((42*sems.length-sum('abs'))/(42*sems.length)*100).toFixed(1));
+  set('add_att_trend',round1(res[sems[sems.length-1]].att-res[sems[0]].att).toFixed(1));
+  set('add_total_barred',sum('barred'));set('add_total_failed',sum('failed'));
+}
+document.getElementById('addModal').addEventListener('input',e=>{if(/^add_sem\d_(math|science|english)_/.test(e.target.id))recomputeSummary();});
 
 function openAddModal(){document.getElementById('studentFormMode').value='add';document.getElementById('editOriginalId').value='';document.getElementById('studentModalTitle').textContent='Add new student';document.getElementById('studentModalSub').textContent='Enter profile, academic summary, subject marks, and attendance details.';document.getElementById('addSubmitBtn').textContent='Add student';document.getElementById('addModal').classList.add('open');document.getElementById('addModalError').style.display='none';document.getElementById('addModalSuccess').style.display='none';clearStudentForm();}
 function closeAddModal(){document.getElementById('addModal').classList.remove('open');}
@@ -737,7 +1044,7 @@ async function submitAddStudent(){
   const url=mode==='edit'?`/api/students/update/${document.getElementById('editOriginalId').value}`:'/api/students/add';
   btn.textContent=mode==='edit'?'Saving…':'Adding…';btn.disabled=true;
   try{const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await res.json();
-    if(data.success){sucBox.textContent=data.message;sucBox.style.display='block';setTimeout(()=>{closeAddModal();loadStudents();},1200);}
+    if(data.success){sucBox.textContent=data.message;sucBox.style.display='block';setTimeout(()=>{closeAddModal();reloadStudentViews();},1200);}
     else{errBox.textContent=data.error;errBox.style.display='block';}}
   catch(e){errBox.textContent='Server error.';errBox.style.display='block';}
   finally{btn.textContent=mode==='edit'?'Save changes':'Add student';btn.disabled=false;}
@@ -748,7 +1055,7 @@ async function uploadBatchFile(){
   if(!input.files.length)return;const form=new FormData();form.append('file',input.files[0]);
   msg.style.cssText='display:block;background:var(--info-lt);border:1px solid var(--info-border);color:var(--blue);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent='Importing students…';
   try{const res=await fetch('/api/students/import',{method:'POST',body:form});const data=await res.json();
-    if(data.success){msg.style.cssText='display:block;background:var(--low-lt);border:1px solid var(--low-border);color:var(--low);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.message;loadStudents();}
+    if(data.success){msg.style.cssText='display:block;background:var(--low-lt);border:1px solid var(--low-border);color:var(--low);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.message;reloadStudentViews();}
     else{msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent=data.error;}}
   catch(e){msg.style.cssText='display:block;background:var(--high-lt);border:1px solid var(--high-border);color:var(--high);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;font-weight:500';msg.textContent='Server error.';}
   finally{input.value='';}
@@ -761,13 +1068,20 @@ async function confirmDelete(){
   if(!_deleteId)return;const btn=document.getElementById('deleteConfirmBtn'),errBox=document.getElementById('deleteModalError');
   errBox.style.display='none';btn.textContent='Deleting…';btn.disabled=true;
   try{const res=await fetch(`/api/students/delete/${_deleteId}`,{method:'DELETE'});const data=await res.json();
-    if(data.success){closeDeleteModal();loadStudents();}else{errBox.textContent=data.error;errBox.style.display='block';}}
+    if(data.success){closeDeleteModal();reloadStudentViews();}else{errBox.textContent=data.error;errBox.style.display='block';}}
   catch(e){errBox.textContent='Server error.';errBox.style.display='block';}
   finally{btn.textContent='Delete';btn.disabled=false;}
 }
 
 document.getElementById('addModal').addEventListener('click',e=>{if(e.target===document.getElementById('addModal'))closeAddModal();});
 document.getElementById('deleteModal').addEventListener('click',e=>{if(e.target===document.getElementById('deleteModal'))closeDeleteModal();});
+
+// Reopen the tab named in the URL (#classes etc.) after a section switch or refresh
+(function(){
+  const name=location.hash.slice(1);
+  const btn=name&&document.querySelector(`.sb-link[onclick*="showSection('${name}'"]`);
+  if(btn&&document.getElementById('sec-'+name))showSection(name,btn);
+})();
 </script>
 </body>
 </html>

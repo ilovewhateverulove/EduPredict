@@ -336,7 +336,9 @@ df['risk_probability'] = model.predict_proba(X)[:, 1]
 df['prediction_label'] = ['At-Risk' if p==1 else 'Safe' for p in model.predict(X)]
 df['risk_level']       = df['risk_probability'].apply(risk_level)
 
-output_cols = ['StudentID','Age','Gender','Ethnicity','ParentalEducation',
+# Name/Email are carried through for the web app only; they are never model features
+output_cols = ['StudentID'] + [c for c in ('FullName', 'Email') if c in df.columns]
+output_cols += ['Age','Gender','Ethnicity','ParentalEducation',
                'StudyTimeWeekly','StudyMethod','Tutoring']
 for sem in SEMS:
     for subj in SUBJECTS:

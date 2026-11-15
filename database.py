@@ -10,6 +10,7 @@ Tables:
   attendance_records— per-subject per-semester absences + barring status
   predictions       — ML model output (risk label, probability, CGPA)
   live_predictions  — web form submissions logged in real-time
+  interventions     — follow-up actions/notes logged by lecturers and admins
   admin_users       — bcrypt-hashed admin credentials
 ════════════════════════════════════════════════════════════════════
 """
@@ -29,6 +30,7 @@ class Student(db.Model):
 
     student_id         = db.Column(db.String(20),  primary_key=True)
     section_id         = db.Column(db.Integer, db.ForeignKey("class_sections.id"))
+    full_name          = db.Column(db.String(100))
     email              = db.Column(db.String(120), unique=True)
     password_hash      = db.Column(db.String(255))
     registration_status= db.Column(db.String(20), default="pending")
@@ -71,6 +73,7 @@ class Lecturer(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     full_name     = db.Column(db.String(100), nullable=False)
     email         = db.Column(db.String(120))
+    is_active     = db.Column(db.Boolean, default=True, nullable=False)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
     sections = db.relationship("ClassSection", back_populates="lecturer",
@@ -230,6 +233,10 @@ class LivePrediction(db.Model):
     risk_probability = db.Column(db.Float)
     risk_level       = db.Column(db.String(15))
 
+    # Who ran the prediction, so each lecturer only sees their own feed
+    lecturer_id      = db.Column(db.Integer, index=True)
+    section_id       = db.Column(db.Integer, index=True)
+
     def to_dict(self):
         d = {c.name: getattr(self, c.name) for c in self.__table__.columns}
         if self.timestamp:
@@ -252,10 +259,48 @@ class RiskNotification(db.Model):
     recipient       = db.Column(db.String(120))
     message         = db.Column(db.Text)
     sent            = db.Column(db.Boolean, default=False)
+    # pending | sent | failed | no_email | not_configured
+    status          = db.Column(db.String(20), default="pending", index=True)
+    sent_at         = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     student = db.relationship("Student")
     section = db.relationship("ClassSection")
+
+
+
+#  INTERVENTIONS  (lecturer/admin follow-up actions on a student)
+class Intervention(db.Model):
+    __tablename__ = "interventions"
+
+    id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    student_id      = db.Column(db.String(20), db.ForeignKey("students.student_id",
+                                ondelete="CASCADE"), nullable=False, index=True)
+    action_type     = db.Column(db.String(40), nullable=False)   # Meeting, Referral, ...
+    notes           = db.Column(db.Text)
+    status          = db.Column(db.String(20), default="Open", nullable=False)  # Open / In Progress / Resolved
+    follow_up_date  = db.Column(db.Date)
+    created_by      = db.Column(db.String(80))
+    created_by_role = db.Column(db.String(20))
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow,
+                                onupdate=datetime.utcnow)
+
+    student = db.relationship("Student", backref=db.backref(
+        "interventions", cascade="all, delete-orphan"))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "student_id": self.student_id,
+            "action_type": self.action_type,
+            "notes": self.notes or "",
+            "status": self.status,
+            "follow_up_date": self.follow_up_date.isoformat() if self.follow_up_date else None,
+            "created_by": self.created_by or "-",
+            "created_by_role": self.created_by_role or "",
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else "",
+        }
 
 
 class AdminUser(db.Model):
