@@ -249,7 +249,7 @@
         border:2px solid {% if risk_class=='high' %}rgba(255,77,77,0.5){% elif risk_class=='medium' %}rgba(255,152,0,0.5){% else %}rgba(0,200,83,0.5){% endif %};
         background:#1A2B4A;">
     <div>
-      <div class="banner-title">{{ student.prediction }} — {{ student.risk_level }}</div>
+      <div class="banner-title">{% if student.name %}{{ student.name }} · {% endif %}{{ student.prediction }} — {{ student.risk_level }}</div>
       <div class="banner-sub">
         ID #{{ student.id }} &bull; {{ student.gender }} &bull; Age {{ student.age }} &bull;
         {% if student.risk_level == 'High Risk' %}Immediate attention recommended.
@@ -373,14 +373,14 @@
             <td style="padding:9px 10px;text-align:center;color:{% if subj.quiz >= 12 %}var(--low){% elif subj.quiz >= 8 %}var(--med){% else %}var(--high){% endif %}">{{ subj.quiz }}</td>
             <td style="padding:9px 10px;text-align:center;color:{% if subj.assignment >= 24 %}var(--low){% elif subj.assignment >= 16 %}var(--med){% else %}var(--high){% endif %}">{{ subj.assignment }}</td>
             <td style="padding:9px 10px;text-align:center">
-              <span style="color:{% if subj.carry >= 36 %}var(--low){% elif subj.carry >= 24 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.carry }}</span>
+              <span style="color:{% if subj.carry >= 36 %}var(--low){% elif subj.carry >= 30 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.carry }}</span>
               <span style="font-size:10px;color:var(--muted)"> ({{ (subj.carry/60*100)|round(0)|int }}%)</span>
             </td>
             <td style="padding:9px 10px;text-align:center">
               {% if subj.barred == 'Yes' %}
                 <span style="color:var(--high);font-weight:700">0.0 <span style="font-size:9px;color:var(--muted)">(barred)</span></span>
               {% else %}
-                <span style="color:{% if subj.final >= 24 %}var(--low){% elif subj.final >= 16 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.final }}</span>
+                <span style="color:{% if subj.final >= 24 %}var(--low){% elif subj.final >= 20 %}var(--med){% else %}var(--high){% endif %};font-weight:500">{{ subj.final }}</span>
                 <span style="font-size:10px;color:var(--muted)"> ({{ (subj.final/40*100)|round(0)|int }}%)</span>
               {% endif %}
             </td>
